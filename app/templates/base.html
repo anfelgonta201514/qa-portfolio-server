@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Andres Gonzalez — QA Automation{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a href="{{ url_for('index') }}" class="brand">Andres Gonzalez</a>
+    <nav>
+      <a href="{{ url_for('index') }}">Portafolio</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+        <form action="{{ url_for('admin.logout') }}" method="post" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">Salir</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('admin.login') }}">Admin</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

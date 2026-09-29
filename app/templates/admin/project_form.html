@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="admin-form">
+  <h1>{{ "Editar proyecto" if project else "Nuevo proyecto" }}</h1>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Título<input type="text" name="title" value="{{ project.title if project else '' }}" required></label>
+    <label>Descripción<textarea name="description" rows="4" required>{{ project.description if project else '' }}</textarea></label>
+    <label>Tech stack (separado por comas)<input type="text" name="tech_stack" value="{{ project.tech_stack if project else '' }}" required></label>
+    <label>URL del repo<input type="url" name="repo_url" value="{{ project.repo_url if project else '' }}"></label>
+    <label>Semana del plan<input type="number" name="week" value="{{ project.week if project and project.week is not none else '' }}"></label>
+    <button type="submit">Guardar</button>
+  </form>
+</section>
+{% endblock %}

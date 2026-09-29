@@ -1,45 +1,57 @@
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, render_template
+from flask_login import LoginManager
+from flask_wtf import CSRFProtect
 
-from models import Project, db
-
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
-# pool_pre_ping: antes de usar una conexión del pool, la prueba con un
-# "SELECT 1" liviano. Sin esto, si Postgres se reinicia (ej. un deploy que
-# recrea ese contenedor) mientras `app` sigue corriendo, el pool se queda
-# con conexiones muertas y el próximo request revienta con
-# "server closed the connection unexpectedly" en vez de reconectar solo.
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
-db.init_app(app)
-
-# Sin Flask-Migrate todavía: con un solo modelo y sin datos reales en
-# producción, create_all() alcanza. Introducir migraciones (Alembic) antes
-# de que el schema deje de ser trivial o haya datos reales que no se puedan
-# perder en un cambio de columnas.
-with app.app_context():
-    db.create_all()
+from models import User, db
 
 
-@app.get("/")
-def index():
-    return {"status": "ok", "message": "qa-portfolio-server: hello world"}
+def create_app():
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+    # pool_pre_ping: antes de usar una conexión del pool, la prueba con un
+    # "SELECT 1" liviano. Sin esto, si Postgres se reinicia (ej. un deploy
+    # que recrea ese contenedor) mientras `app` sigue corriendo, el pool se
+    # queda con conexiones muertas y el próximo request revienta con
+    # "server closed the connection unexpectedly" en vez de reconectar solo.
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+    app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+
+    db.init_app(app)
+
+    csrf = CSRFProtect()
+    csrf.init_app(app)
+
+    login_manager = LoginManager()
+    login_manager.login_view = "admin.login"
+    login_manager.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(User, int(user_id))
+
+    from admin import admin_bp
+    from api import api_bp
+
+    app.register_blueprint(api_bp)
+    # La API es para consumo programático (frontend público, futuros
+    # scripts/demos), no formularios de navegador con cookie de sesión, así
+    # que no necesita el token CSRF que sí protege los formularios de /admin.
+    csrf.exempt(api_bp)
+    app.register_blueprint(admin_bp)
+
+    # Sin Flask-Migrate todavía: mientras el schema sea chico y no haya
+    # datos reales que no se puedan perder en un cambio de columnas,
+    # create_all() alcanza. Introducir Alembic antes de que deje de serlo.
+    with app.app_context():
+        db.create_all()
+
+    @app.get("/")
+    def index():
+        return render_template("index.html")
+
+    return app
 
 
-@app.get("/api/projects")
-def list_projects():
-    projects = Project.query.order_by(Project.week, Project.id).all()
-    return jsonify([p.to_dict() for p in projects])
-
-
-@app.get("/api/projects/<int:project_id>")
-def get_project(project_id):
-    project = db.get_or_404(Project, project_id)
-    return jsonify(project.to_dict())
-
-
-# Sin endpoints de escritura (POST/PUT/DELETE) todavía a propósito: el
-# server está expuesto públicamente y no hay autenticación hasta el panel
-# admin de la semana 10 (Flask-Login). Publicar escritura sin auth ahora
-# dejaría la base editable por cualquiera.
+app = create_app()
