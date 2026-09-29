@@ -38,14 +38,15 @@ qa-portfolio-server/
 
 Pendiente: HTTPS (necesita un dominio — Let's Encrypt no funciona solo con IP), deploy vía `git pull` en vez de copia manual, backend real con PostgreSQL (semana 9).
 
-## Cómo desplegar (hoy, manual)
+## Cómo desplegar (hoy, manual vía git)
 
-Desde una máquina con la clave SSH del servidor (ver `SERVER_INFO.local.md`):
+El servidor tiene un `git clone` de este mismo repo en `~/qa-portfolio-server` (público, no necesita credenciales). Para desplegar un cambio:
 
 ```bash
-scp -i <clave> -r app nginx docker-compose.yml ubuntu@<IP>:~/qa-portfolio-server/
-ssh -i <clave> ubuntu@<IP> "cd ~/qa-portfolio-server && docker compose up -d --build"
+ssh -i <clave> ubuntu@<IP> "cd ~/qa-portfolio-server && git pull && docker compose up -d --build"
 ```
+
+(Automatizar este paso vía Routine de Claude Code queda para la semana 11 del plan.)
 
 ## Notas de troubleshooting
 

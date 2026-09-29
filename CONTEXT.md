@@ -29,10 +29,12 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 - **Hello world dockerizado, funcionando end-to-end (2026-09-29):** `docker-compose.yml` con 2 servicios — `app` (Flask mínimo + Gunicorn, `app/Dockerfile`) y `nginx` (imagen oficial `nginx:1.27-alpine`, reverse proxy vía `nginx/nginx.conf`, publica `80:80`). Copiado al servidor (`/home/ubuntu/qa-portfolio-server/`, no vía git todavía — ver pendientes) y levantado con `docker compose up -d --build`. Verificado con `curl` externo a `http://<IP>/`: `200 OK`, JSON de Flask, headers de Nginx — la cadena completa (Security List → iptables → Nginx → Gunicorn → Flask) funciona de punta a punta.
 - **systemd unit creado y funcionando (2026-09-29):** `deploy/qa-portfolio.service` (`Type=oneshot`, `RemainAfterExit=yes`, `ExecStart=/usr/bin/docker compose up -d` en `/home/ubuntu/qa-portfolio-server`), instalado en `/etc/systemd/system/`, `enabled` y `active (exited)`. **Nota importante:** el plugin `docker compose` estaba instalado solo para el usuario `ubuntu` (`~/.docker/cli-plugins/docker-compose`), así que root (con quien corre systemd) no lo encontraba — `sudo docker compose` fallaba con "'compose' is not a docker command". Se resolvió copiando el binario a `/usr/local/lib/docker/cli-plugins/docker-compose` (instalación a nivel de sistema, visible para cualquier usuario). **No se probó con un reinicio real del servidor** — `systemctl is-enabled` confirma que arrancaría al boot, pero un reboot de verdad queda pendiente si Andres quiere validarlo con evidencia 100% real.
 
+- **Regla de Palworld eliminada (2026-09-29):** borrada de las dos capas — iptables local (`sudo iptables -D INPUT 1`, repersistida con `netfilter-persistent save`) y Security List de Oracle Cloud (Andres la borró manualmente desde la consola). El `INPUT` chain hoy solo tiene: loopback/ESTABLISHED/ICMP, `22/tcp`, `80,443/tcp` y el `REJECT` catch-all.
+- **Repo público creado y deploy vía git armado (2026-09-29):** `github.com/anfelgonta201514/qa-portfolio-server` (público — ver `CLAUDE.md` regla 1 sobre por qué es seguro: nunca lleva secretos, solo código+config). Primer commit pusheado (sin trailer `Co-Authored-By`, mismo criterio que `qa-automation-portfolio`). En el servidor: se guardó la copia manual (`mv` a `.manual-backup`), se clonó el repo real en su lugar (mismo path `/home/ubuntu/qa-portfolio-server`, así el `systemd` unit no necesitó cambios), se reconstruyó con `docker compose up -d --build` y se verificó con `curl` externo que sigue respondiendo igual. Backup manual eliminado una vez confirmado. Deploy de ahora en más: `git pull && docker compose up -d --build` en el servidor (documentado en `README.md`).
+
 ### ❌ Todavía no empezado
-- Limpiar o dejar la regla de firewall de `8211/udp` (Palworld) — sin uso, no bloqueante, decidir cuándo se toquen las reglas de firewall.
-- El proyecto vive en el servidor como una copia manual (`scp`), no como un `git clone`/`git pull` — el flujo de deploy vía git (mencionado en `CLAUDE.md` y en el plan, semana 11) todavía no está armado. Por ahora, cualquier cambio futuro se vuelve a copiar a mano.
 - Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene el hello world corriendo).
+- Automatizar el `git pull` del deploy vía Routine de Claude Code — queda para la semana 11 del plan, no antes.
 - Semanas 9-14: fuera de alcance por ahora (backend real con Postgres, frontend, Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
 
 **✅ Hito: la semana 8 del plan (SSH, puertos OCI + iptables, Nginx, Gunicorn/Python, systemd service) queda funcionalmente completa** — la única diferencia con el plan original es que todo corre dockerizado en vez de nativo (decisión tomada con Andres, ver sección de arquitectura en `CLAUDE.md`).
@@ -41,15 +43,17 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 
 ## 3. PENDIENTES INMEDIATOS (semana 8)
 
+Todos los pendientes de la semana 8 (incluidos los menores) están cerrados:
+
 - [x] Abrir `80/443 tcp` en iptables local — **hecho 2026-09-18**, persistido en `/etc/iptables/rules.v4`.
-- [x] Abrir `80/443 tcp` en la **Security List de Oracle Cloud** — **hecho 2026-09-29**, verificado con `curl` externo ("Connection refused" en ambos puertos, confirma las dos capas de firewall abiertas).
+- [x] Abrir `80/443 tcp` en la **Security List de Oracle Cloud** — **hecho 2026-09-29**.
 - [x] Instalar/verificar Docker Compose en el servidor — **hecho 2026-09-29**, ya venía con la instalación de Docker.
-- [x] Armar un `docker-compose.yml` inicial con un servicio "hello world" — **hecho 2026-09-29**, Flask + Gunicorn detrás de Nginx, verificado con `curl` externo (`200 OK`).
-- [x] Escribir y activar el systemd unit — **hecho 2026-09-29**, `enabled` + `active (exited)`, con el fix del plugin de Compose instalado a nivel de sistema.
-- [ ] (Opcional) Validar el systemd unit con un reinicio real del servidor.
-- [ ] Evaluar si limpiar la regla de `8211/udp` (Palworld) ahora o dejarla (no genera riesgo real, solo ruido).
-- [ ] Armar el deploy vía git (`git clone`/`git pull` en el server) en vez de `scp` manual — no bloqueante para cerrar la semana 8, pero hace falta antes de automatizar el deploy en semana 11.
-- [ ] Cuando llegue el momento de HTTPS: registrar un dominio gratuito (DuckDNS, mencionado en el plan) — Let's Encrypt/Certbot no funciona solo con IP.
+- [x] Armar un `docker-compose.yml` inicial con un servicio "hello world" — **hecho 2026-09-29**.
+- [x] Escribir y activar el systemd unit — **hecho 2026-09-29**.
+- [x] Limpiar la regla de `8211/udp` (Palworld) — **hecho 2026-09-29**, en las dos capas.
+- [x] Repo público en GitHub + deploy vía git (`git clone`/`git pull`) en vez de `scp` manual — **hecho 2026-09-29**.
+- [ ] (Opcional, no bloqueante) Validar el systemd unit con un reinicio real del servidor.
+- [ ] Cuando llegue el momento de HTTPS: registrar un dominio gratuito (DuckDNS, mencionado en el plan) — Let's Encrypt/Certbot no funciona solo con IP. Esto es semana 9, no semana 8.
 
 ---
 
@@ -76,6 +80,21 @@ Se retomó el plan de estudio después de cerrar completamente `qa-automation-po
 2. Se armó el hello world dockerizado (Flask+Gunicorn detrás de Nginx), se copió al server y se levantó con `docker compose up -d --build` — confirmado con `curl` externo real (`200 OK`, JSON de Flask, headers de Nginx).
 3. Se escribió el systemd unit para levantar el compose al boot. Primer intento falló (`exit-code 125`, `journalctl` mostró que `docker compose` imprimía el help general en vez de ejecutar — el plugin de Compose estaba instalado solo para el usuario `ubuntu`, invisible para root/systemd). Se diagnosticó comparando `ls ~/.docker/cli-plugins/` vs `/usr/lib(exec)/docker/cli-plugins/` y se resolvió instalando el plugin a nivel de sistema (`/usr/local/lib/docker/cli-plugins/docker-compose`). Reintentado: `active (exited)`, `enabled`, verificado que la app seguía respondiendo.
 
-**Con esto, la semana 8 queda funcionalmente cerrada** (ver hito en sección 2). Pendientes menores no bloqueantes: validar con un reinicio real (opcional), decidir sobre la regla de Palworld, y armar deploy vía git en vez de `scp` manual.
+**Con esto, la semana 8 queda funcionalmente cerrada** (ver hito en sección 2).
 
-**Siguiente paso recomendado:** preguntarle a Andres si quiere (a) seguir directo a la semana 9 (backend real: PostgreSQL + Flask-SQLAlchemy + dominio/SSL), (b) cerrar primero los pendientes menores de arriba, o (c) pausar acá. Mismo patrón de preguntar antes de asumir que se usó en toda la sesión.
+---
+
+**2026-09-29 — Cierre de pendientes menores (misma sesión, continuación).**
+
+Andres pidió cerrar los pendientes menores antes de pasar a la semana 9. Se preguntó primero qué hacer con cada uno (no se asumió):
+
+1. **Regla de Palworld:** Andres eligió eliminarla. Se borró de iptables local primero (`sudo iptables -D INPUT 1` + `netfilter-persistent save`), y se le dieron a Andres los pasos para borrarla también de la Security List de Oracle (la borró él mismo desde la consola).
+2. **Deploy vía git:** Andres eligió crear un repo en GitHub ahora (en vez de git local sin GitHub, o dejarlo para después). Sin `gh` CLI disponible en el entorno, Andres creó el repo manualmente desde la web de GitHub (`qa-portfolio-server`, público, sin README/gitignore inicial para poder pushear el contenido local sin conflictos).
+3. Antes de pushear a un repo **público**, Andres preguntó explícitamente si era seguro dado que ahí va a vivir "toda la web, cosas personales" — pregunta válida. Se le explicó la distinción: el contenido del portafolio (bio, proyectos) es lo que se busca que sea público; lo que nunca debe estar en git (público o privado) son los secretos reales (contraseñas, API keys, `SECRET_KEY` de Flask) — eso ya estaba resuelto de entrada con `SERVER_INFO.local.md` gitignorado, y se documentó como regla dura para cuando lleguen los secretos de Postgres/Anthropic en semanas 9 y 13. Se verificó con `grep` que la IP/clave no se habían colado en ningún archivo trackeado antes de pushear.
+4. Se agregaron a `CLAUDE.md` las mismas reglas de `qa-automation-portfolio` que todavía faltaban acá (sin trailer `Co-Authored-By`, Claude no comitea/pushea sin permiso puntual) — aplicadas por el mismo criterio ya establecido en el repo hermano, sin volver a preguntarlas.
+5. Primer commit pusheado a `github.com/anfelgonta201514/qa-portfolio-server` (con permiso explícito de Andres para ese push puntual).
+6. En el servidor: se respaldó la copia manual (`mv` a `.manual-backup`), se clonó el repo real en el mismo path, se reconstruyó el stack (`docker compose up -d --build`) y se confirmó con `curl` externo que responde igual que antes. Backup eliminado tras confirmar.
+
+**Todos los pendientes de la semana 8, incluidos los menores, están cerrados.** Solo queda el reinicio de validación (opcional) y todo lo de HTTPS/dominio, que es contenido de la semana 9, no de la 8.
+
+**Siguiente paso recomendado:** preguntarle a Andres si quiere (a) seguir directo a la semana 9 (backend real: PostgreSQL + Flask-SQLAlchemy + dominio/SSL), (b) hacer el reinicio de validación del systemd antes de seguir, o (c) pausar acá.
