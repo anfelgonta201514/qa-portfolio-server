@@ -32,12 +32,23 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 - **Regla de Palworld eliminada (2026-09-29):** borrada de las dos capas — iptables local (`sudo iptables -D INPUT 1`, repersistida con `netfilter-persistent save`) y Security List de Oracle Cloud (Andres la borró manualmente desde la consola). El `INPUT` chain hoy solo tiene: loopback/ESTABLISHED/ICMP, `22/tcp`, `80,443/tcp` y el `REJECT` catch-all.
 - **Repo público creado y deploy vía git armado (2026-09-29):** `github.com/anfelgonta201514/qa-portfolio-server` (público — ver `CLAUDE.md` regla 1 sobre por qué es seguro: nunca lleva secretos, solo código+config). Primer commit pusheado (sin trailer `Co-Authored-By`, mismo criterio que `qa-automation-portfolio`). En el servidor: se guardó la copia manual (`mv` a `.manual-backup`), se clonó el repo real en su lugar (mismo path `/home/ubuntu/qa-portfolio-server`, así el `systemd` unit no necesitó cambios), se reconstruyó con `docker compose up -d --build` y se verificó con `curl` externo que sigue respondiendo igual. Backup manual eliminado una vez confirmado. Deploy de ahora en más: `git pull && docker compose up -d --build` en el servidor (documentado en `README.md`).
 
-### ❌ Todavía no empezado
-- Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene el hello world corriendo).
-- Automatizar el `git pull` del deploy vía Routine de Claude Code — queda para la semana 11 del plan, no antes.
-- Semanas 9-14: fuera de alcance por ahora (backend real con Postgres, frontend, Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
+- **PostgreSQL + Flask-SQLAlchemy + API REST funcionando end-to-end (2026-09-29):** modelo `Project` (`app/models.py`), API de solo lectura (`GET /api/projects`, `GET /api/projects/<id>`) — sin endpoints de escritura a propósito (sin auth todavía, server público, se agregan en semana 10 junto con el panel admin). Servicio `postgres` (imagen `postgres:16-alpine`, volumen `postgres_data` para persistencia) agregado a `docker-compose.yml`. Secretos manejados vía `.env` gitignorado en el servidor (`.env.example` commiteado como plantilla, contraseña real generada con `openssl rand -hex 24` — **no usar `-base64`**, puede generar `/`, `+`, `=` que rompen el parseo de la URL de conexión). Seed idempotente (`app/seed.py`) insertó un ejemplo real (`qa-automation-portfolio`). Verificado con `curl` externo: `GET /api/projects` devuelve el JSON completo desde la base real.
+- **Dos bugs de infraestructura encontrados y resueltos durante el deploy (2026-09-29)**, ambos documentados en detalle en `README.md` (sección troubleshooting):
+  1. **Nginx cachea la IP del upstream.** `proxy_pass http://app:8000` (URL literal) resuelve el hostname una sola vez al arrancar Nginx; si `app` se recrea (nueva IP interna de Docker), Nginx sigue apuntando a la IP vieja → `502 Bad Gateway`. Fix permanente: `resolver 127.0.0.11 valid=10s;` + `proxy_pass` a una variable (`nginx.conf`), para que resuelva de nuevo en cada request.
+  2. **El pool de conexiones de SQLAlchemy se queda con conexiones muertas si Postgres se reinicia sin que `app` también lo haga.** Síntoma: `OperationalError: server closed the connection unexpectedly` en el primer query después del reinicio de Postgres. Fix: `SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}` en `app.py`.
+- Esta ronda de deploy se hizo **guiando a Andres paso a paso por su propia terminal SSH** (a pedido suyo, para entender el proceso), no ejecutando los comandos por SSH desde la sesión de Claude Code — por eso el troubleshooting fue más largo de lo normal (se fueron encontrando los bugs en tiempo real, uno por uno, en vez de resolverlos todos de una).
 
-**✅ Hito: la semana 8 del plan (SSH, puertos OCI + iptables, Nginx, Gunicorn/Python, systemd service) queda funcionalmente completa** — la única diferencia con el plan original es que todo corre dockerizado en vez de nativo (decisión tomada con Andres, ver sección de arquitectura en `CLAUDE.md`).
+### ❌ Todavía no empezado
+- Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene datos reales en Postgres).
+- Automatizar el `git pull` del deploy vía Routine de Claude Code — queda para la semana 11 del plan, no antes.
+- Flask-Migrate/Alembic — hoy el schema se crea con `db.create_all()` (simplificación documentada a propósito, ver `app.py`); introducir migraciones de verdad antes de que el schema deje de ser trivial.
+- Dominio (DuckDNS) + HTTPS (Let's Encrypt/Certbot) — Andres eligió dejarlo para después de la parte de datos.
+- Panel admin + Flask-Login + endpoints de escritura del API — semana 10, junto con insertar en la BD todo lo documentado de `qa-automation-portfolio`.
+- Semanas 11-14: fuera de alcance por ahora (Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
+
+**✅ Hito: la semana 8 del plan queda funcionalmente completa** (SSH, puertos OCI + iptables, Nginx, Gunicorn/Python, systemd service — todo dockerizado en vez de nativo, decisión tomada con Andres).
+
+**✅ Hito parcial: la semana 9 del plan (PostgreSQL + Flask-SQLAlchemy + API REST) también queda funcionalmente completa.** Falta la parte de dominio/SSL de esa misma semana, dejada para después a pedido de Andres.
 
 ---
 
@@ -53,7 +64,18 @@ Todos los pendientes de la semana 8 (incluidos los menores) están cerrados:
 - [x] Limpiar la regla de `8211/udp` (Palworld) — **hecho 2026-09-29**, en las dos capas.
 - [x] Repo público en GitHub + deploy vía git (`git clone`/`git pull`) en vez de `scp` manual — **hecho 2026-09-29**.
 - [ ] (Opcional, no bloqueante) Validar el systemd unit con un reinicio real del servidor.
-- [ ] Cuando llegue el momento de HTTPS: registrar un dominio gratuito (DuckDNS, mencionado en el plan) — Let's Encrypt/Certbot no funciona solo con IP. Esto es semana 9, no semana 8.
+
+---
+
+## 3b. PENDIENTES INMEDIATOS (semana 9)
+
+- [x] PostgreSQL containerizado con volumen persistente — **hecho 2026-09-29**.
+- [x] Modelo Flask-SQLAlchemy (`Project`) — **hecho 2026-09-29**.
+- [x] API REST Flask (lectura) — **hecho 2026-09-29**, `GET /api/projects` y `GET /api/projects/<id>`.
+- [ ] Dominio gratuito (DuckDNS, mencionado en el plan) — dejado para después a pedido de Andres.
+- [ ] Nginx + SSL (Let's Encrypt/Certbot) — depende del punto anterior, no funciona solo con IP.
+- [ ] Endpoints de escritura del API (POST/PUT/DELETE) — deliberadamente pospuestos hasta que haya autenticación (semana 10).
+- [ ] Flask-Migrate/Alembic — hoy usa `db.create_all()`, simplificación documentada a propósito mientras el schema sea trivial.
 
 ---
 
@@ -97,4 +119,23 @@ Andres pidió cerrar los pendientes menores antes de pasar a la semana 9. Se pre
 
 **Todos los pendientes de la semana 8, incluidos los menores, están cerrados.** Solo queda el reinicio de validación (opcional) y todo lo de HTTPS/dominio, que es contenido de la semana 9, no de la 8.
 
-**Siguiente paso recomendado:** preguntarle a Andres si quiere (a) seguir directo a la semana 9 (backend real: PostgreSQL + Flask-SQLAlchemy + dominio/SSL), (b) hacer el reinicio de validación del systemd antes de seguir, o (c) pausar acá.
+---
+
+**2026-09-29 — Semana 9: Postgres + Flask-SQLAlchemy + API REST (misma sesión, continuación).**
+
+Andres pidió arrancar la semana 9. Se preguntó primero por el dominio/SSL (dependencia externa, necesita que Andres cree una cuenta) — eligió dejarlo para después y arrancar por la parte de datos (Postgres + modelos + API), que no depende de eso.
+
+Se armó el código (modelo `Project`, API de solo lectura, Postgres containerizado, manejo de secretos vía `.env` gitignorado) y se dejó listo. **Andres pidió hacer el deploy él mismo, paso a paso, guiado, para entender el proceso** — cambio de modalidad respecto a semanas anteriores, donde Claude ejecutaba los comandos por SSH directamente. A partir de acá, Claude da instrucciones y explica el porqué; Andres las corre en su propia terminal y pega el resultado.
+
+El deploy guiado encontró y resolvió, en vivo, tres problemas reales (no simulados — bugs genuinos de una primera integración con Postgres):
+
+1. **Contraseña de Postgres generada con `openssl rand -base64`** contenía `/` y `+`, caracteres que rompen el parseo de una URL de conexión (`postgresql://user:PASSWORD@host/db`) si no se escapan. Se corrigió a `openssl rand -hex 24` antes de escribir el `.env` — lección aplicable a cualquier secreto que vaya a vivir dentro de una URL.
+2. **`app` crasheaba en loop al conectar a Postgres la primera vez** (`Connection refused`) — `depends_on: - postgres` solo espera a que el *contenedor* exista, no a que Postgres esté listo para aceptar conexiones. Se agregó un `healthcheck` (`pg_isready`) a `postgres` y `depends_on: postgres: condition: service_healthy` a `app`.
+3. Aun con eso, aparecieron dos bugs más al verificar (`502 Bad Gateway` primero, `OperationalError` después) — ambos por el mismo patrón general ("algo en el stack sigue apuntando a un estado viejo tras un reinicio de otra pieza"): Nginx cacheaba la IP vieja de `app` (fix: `resolver` dinámico en `nginx.conf`), y el pool de SQLAlchemy tenía conexiones muertas hacia el Postgres viejo (fix: `pool_pre_ping=True`). Ambos documentados en detalle en `README.md` porque son gotchas clásicos de Docker Compose que van a volver a aparecer.
+4. En el medio, la sesión SSH de Andres se colgó (no relacionado con el código — problema de red/terminal). Se resolvió abriendo una sesión nueva; el servidor nunca dejó de funcionar.
+
+Al final: `docker compose exec app python seed.py` insertó el ejemplo real (`qa-automation-portfolio`), y se verificó con `curl` externo que `GET /api/projects` devuelve el dato completo desde Postgres.
+
+**Con esto, la parte de datos de la semana 9 (Postgres + SQLAlchemy + API REST) queda funcionalmente completa.** Falta dominio/SSL (pospuesto) y todo lo de semana 10 (panel admin, auth, escritura, insertar el resto del contenido real).
+
+**Siguiente paso recomendado:** preguntarle a Andres si quiere (a) el dominio/SSL ahora para cerrar 100% la semana 9, (b) saltar directo a la semana 10 (frontend + panel admin), o (c) pausar acá.
