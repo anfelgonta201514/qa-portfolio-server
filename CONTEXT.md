@@ -69,11 +69,13 @@ Todos los pendientes de la semana 8 (incluidos los menores) están cerrados:
 
 ## 3b. PENDIENTES INMEDIATOS (semana 9)
 
+Todos los pendientes de la semana 9 están cerrados:
+
 - [x] PostgreSQL containerizado con volumen persistente — **hecho 2026-09-29**.
 - [x] Modelo Flask-SQLAlchemy (`Project`) — **hecho 2026-09-29**.
 - [x] API REST Flask (lectura) — **hecho 2026-09-29**, `GET /api/projects` y `GET /api/projects/<id>`.
-- [ ] Dominio gratuito (DuckDNS, mencionado en el plan) — dejado para después a pedido de Andres.
-- [ ] Nginx + SSL (Let's Encrypt/Certbot) — depende del punto anterior, no funciona solo con IP.
+- [x] Dominio gratuito — **hecho 2026-09-29**, DuckDNS (`andresqe.duckdns.org` → `158.247.123.101`).
+- [x] Nginx + SSL (Let's Encrypt/Certbot) — **hecho 2026-09-29**, certificado real emitido y HTTP→HTTPS redirigiendo, renovación automática verificada con `--dry-run`.
 - [ ] Endpoints de escritura del API (POST/PUT/DELETE) — deliberadamente pospuestos hasta que haya autenticación (semana 10).
 - [ ] Flask-Migrate/Alembic — hoy usa `db.create_all()`, simplificación documentada a propósito mientras el schema sea trivial.
 
@@ -138,4 +140,19 @@ Al final: `docker compose exec app python seed.py` insertó el ejemplo real (`qa
 
 **Con esto, la parte de datos de la semana 9 (Postgres + SQLAlchemy + API REST) queda funcionalmente completa.** Falta dominio/SSL (pospuesto) y todo lo de semana 10 (panel admin, auth, escritura, insertar el resto del contenido real).
 
-**Siguiente paso recomendado:** preguntarle a Andres si quiere (a) el dominio/SSL ahora para cerrar 100% la semana 9, (b) saltar directo a la semana 10 (frontend + panel admin), o (c) pausar acá.
+---
+
+**2026-09-29 — Dominio + HTTPS (misma sesión, continuación final).**
+
+Andres retomó el dominio/SSL que había pospuesto. Antes de elegir, preguntó explícitamente por las opciones porque le preocupaba que fuera "difícil de escribir" (asumía que quizás le tocaría usar su nombre completo o algo largo) — se le aclaró que el texto del subdominio lo elige él mismo, no lo asigna nadie, y se compararon 3 opciones (DuckDNS gratis, dominio propio pago, otros DNS dinámicos gratis no recomendados por mala fama/renovación manual). Eligió **DuckDNS**, gratis, para esta etapa del plan.
+
+1. Andres creó `andresqe.duckdns.org` él mismo (cuenta + subdominio + IP apuntando al server) — verificado con `nslookup` que resuelve exacto a `158.247.123.101`.
+2. Se armó el flujo de Let's Encrypt en 3 rondas, por el problema clásico del huevo y la gallina (Nginx no puede levantar con un certificado que todavía no existe):
+   - **Ronda A:** se agregó a `nginx.conf` un location para servir el desafío ACME (`/.well-known/acme-challenge/`) desde un webroot compartido, y a `docker-compose.yml` un servicio `certbot` con un loop de renovación automática (`certbot renew` cada 12h) ya armado desde el principio, aunque todavía no hubiera ningún certificado que renovar.
+   - **Ronda B:** se preguntó a Andres qué email usar para el registro en Let's Encrypt (preguntó si importaba — se le explicó que nunca queda público, solo se usa para avisos de renovación fallida, y se recomendó usar el email real para no perderse ese aviso). Se emitió el certificado real con `docker compose run --rm --entrypoint certbot certbot certonly --webroot ...` (hubo que pisar el entrypoint custom del servicio, que por defecto corre el loop de renovación, no `certonly`).
+   - **Ronda C:** se activó el bloque HTTPS real en `nginx.conf` (puerto 443, certificado emitido, HTTP redirige a HTTPS) y se agregó `443:443` a los puertos de `nginx` en el compose (el firewall ya estaba abierto en ambas capas desde la semana 8, no hizo falta tocarlo).
+3. Verificado end-to-end: `https://andresqe.duckdns.org/` y `/api/projects` responden bien, certificado real de Let's Encrypt (`issuer=Let's Encrypt`, no autofirmado, confirmado con `openssl s_client`), redirect `301` de HTTP a HTTPS confirmado, y la renovación automática probada con `certbot renew --dry-run` ("Congratulations, all simulated renewals succeeded") sin gastar cuota real ni esperar 90 días.
+
+**Con esto, la semana 9 completa (Postgres + SQLAlchemy + API REST + dominio + HTTPS) queda cerrada.** El deploy guiado paso a paso (iniciado en la sesión de datos) se mantuvo para todo el trabajo de dominio/SSL también — Andres corrió cada comando en su propia terminal SSH.
+
+**Siguiente paso recomendado:** preguntarle a Andres si quiere seguir directo a la **semana 10** (frontend + panel admin + Flask-Login + insertar el resto del contenido real de `qa-automation-portfolio` en la BD) o pausar acá.

@@ -2,17 +2,21 @@
 
 Servidor y portafolio web personal de Andres Gonzalez — semanas 8-14 de un plan de estudio de 14 semanas más amplio (Claude IA + QE Automation). Continúa a [`qa-automation-portfolio`](../qa-automation-portfolio) (semanas 4-7): ese repo demuestra el stack de testing, este aloja el sitio que lo presenta.
 
-Corre sobre una instancia Oracle Cloud Always Free (Ubuntu 20.04 LTS, ARM/aarch64).
+Corre sobre una instancia Oracle Cloud Always Free (Ubuntu 20.04 LTS, ARM/aarch64). Público en **https://andresqe.duckdns.org**.
 
 ## Arquitectura
 
 Todo dockerizado — ver `CLAUDE.md` para el porqué de esta decisión.
 
 ```
-Nginx (contenedor, proxy inverso, resolución dinámica de upstream)
+Nginx (contenedor, proxy inverso, resolución dinámica de upstream, HTTPS)
   → Gunicorn (contenedor, WSGI)
     → Flask (app Python, API REST de solo lectura)
       → PostgreSQL (contenedor, volumen persistente)
+
+Certbot (contenedor) → certificado Let's Encrypt para andresqe.duckdns.org,
+                        renovación automática cada 12h (solo renueva si
+                        falta <30 días para el vencimiento)
 
 systemd (qa-portfolio.service) → docker compose up -d al boot del servidor
 ```
@@ -28,8 +32,8 @@ qa-portfolio-server/
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── nginx/
-│   └── nginx.conf       → reverse proxy hacia `app`, con resolver dinámico (ver troubleshooting)
-├── docker-compose.yml   → orquesta app + nginx + postgres
+│   └── nginx.conf       → reverse proxy hacia `app`, resolver dinámico, HTTP→HTTPS, TLS con el cert de Certbot
+├── docker-compose.yml   → orquesta app + nginx + postgres + certbot
 ├── .env.example          → plantilla de variables (copiar a .env, nunca commitear el real)
 ├── deploy/
 │   └── qa-portfolio.service → systemd unit, instalado en /etc/systemd/system/ del servidor
@@ -38,11 +42,27 @@ qa-portfolio-server/
 
 ## Estado
 
-✅ **Backend con Postgres funcionando end-to-end**: Nginx → Gunicorn → Flask → PostgreSQL, servido desde el servidor real (puerto 80), con las dos capas de firewall abiertas y verificadas, `GET /api/projects` devolviendo datos reales desde la base. systemd levanta todo el stack al boot. Deploy vía `git pull` (no copia manual).
+✅ **Stack completo funcionando end-to-end, con HTTPS real**: Nginx → Gunicorn → Flask → PostgreSQL, servido en `https://andresqe.duckdns.org` con certificado de Let's Encrypt (renovación automática verificada con `--dry-run`), con las dos capas de firewall abiertas y verificadas, `GET /api/projects` devolviendo datos reales desde la base. HTTP (puerto 80) redirige a HTTPS. systemd levanta todo el stack al boot. Deploy vía `git pull` (no copia manual).
 
 Endpoints de escritura (POST/PUT/DELETE) **a propósito no están implementados todavía** — el server es público y no hay autenticación hasta el panel admin (Flask-Login, semana 10).
 
-Pendiente: HTTPS (necesita un dominio — Let's Encrypt no funciona solo con IP), panel admin + auth (semana 10), migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suficiente mientras el schema sea trivial).
+Pendiente: panel admin + auth (semana 10), migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suficiente mientras el schema sea trivial).
+
+## Dominio y HTTPS
+
+- **DNS:** `andresqe.duckdns.org` → `158.247.123.101`, configurado a mano en DuckDNS (IP fija de Oracle Cloud Always Free — no hace falta el cliente de actualización dinámica de DuckDNS, la IP no cambia sola).
+- **Certificado:** Let's Encrypt vía Certbot, modo `webroot` (usa el propio Nginx para responder el desafío HTTP, sin tener que parar nada). Emitido una sola vez a mano:
+  ```bash
+  docker compose run --rm --entrypoint certbot certbot certonly \
+    --webroot -w /var/www/certbot \
+    -d andresqe.duckdns.org \
+    --email andresfelgonta@gmail.com \
+    --agree-tos --no-eff-email
+  ```
+- **Renovación:** el servicio `certbot` del compose corre un loop (`certbot renew` cada 12h) — no hace nada mientras el certificado no esté por vencer. Probar que funciona sin gastar cuota real ni esperar 90 días:
+  ```bash
+  docker compose run --rm --entrypoint certbot certbot renew --dry-run
+  ```
 
 ## Cómo desplegar (hoy, manual vía git)
 
