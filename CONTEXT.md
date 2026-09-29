@@ -38,17 +38,24 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
   2. **El pool de conexiones de SQLAlchemy se queda con conexiones muertas si Postgres se reinicia sin que `app` también lo haga.** Síntoma: `OperationalError: server closed the connection unexpectedly` en el primer query después del reinicio de Postgres. Fix: `SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}` en `app.py`.
 - Esta ronda de deploy se hizo **guiando a Andres paso a paso por su propia terminal SSH** (a pedido suyo, para entender el proceso), no ejecutando los comandos por SSH desde la sesión de Claude Code — por eso el troubleshooting fue más largo de lo normal (se fueron encontrando los bugs en tiempo real, uno por uno, en vez de resolverlos todos de una).
 
+- **Dominio + HTTPS reales (2026-09-29):** `andresqe.duckdns.org` (DuckDNS, elegido por Andres tras comparar 3 opciones), apuntando a la IP fija del servidor. Certificado real de Let's Encrypt vía Certbot (modo `webroot`, en 3 rondas por el problema del huevo y la gallina — Nginx no puede levantar con un cert que no existe). HTTP redirige a HTTPS. Renovación automática (`certbot renew` cada 12h) verificada con `--dry-run` sin gastar cuota real. Confirmado con `openssl s_client`: certificado real, `issuer=Let's Encrypt`, no autofirmado.
+- **Panel admin con Flask-Login + CRUD completo funcionando end-to-end (2026-09-29):** modelo `User` (password hasheado con Werkzeug), blueprints `admin` (`/admin/*` — login, logout, dashboard, alta/edición/borrado vía formularios HTML) y `api` (`/api/*` — lectura pública, escritura con `@login_required`), CSRF (Flask-WTF) en los formularios de admin. `app.py` pasó a app-factory (`create_app()`) para poder registrar blueprints sin imports circulares. Usuario admin creado con `create_admin.py` (interactivo, `getpass`, la contraseña real nunca pasó por el chat ni por ningún archivo). Frontend público (`/`) reescrito: consume `GET /api/projects` por `fetch` desde JS vanilla (sin framework), con escape manual de los valores antes de meterlos al DOM. Sección "Demos" agregada como placeholder ("Próximamente") — los demos de IA reales son semana 13, acá solo se dejó el lugar en el frontend.
+- **Contenido real cargado:** `seed.py` reescrito para insertar 4 entradas (una por semana 4-7 de `qa-automation-portfolio`, cada una con su propio link a la subcarpeta/archivo real del repo) en vez de la única entrada combinada de la semana pasada — que se borra automáticamente al re-correr el seed.
+- **Verificado en producción, con el navegador real:** captura de pantalla del dashboard de admin logueado mostrando las 4 entradas con Editar/Borrar; Andres probó crear y borrar una entrada de prueba con éxito (CRUD de escritura confirmado, no solo lectura).
+- **Bug nuevo encontrado y corregido (2026-09-29):** al copiar el `SECRET_KEY` al `.env`, Andres incluyó literalmente los símbolos `<` `>` de la notación de placeholder de la instrucción (`SECRET_KEY=<valor-real>` en vez de `SECRET_KEY=valor-real`) — no rompió nada (Flask acepta cualquier string), pero se corrigió por prolijidad. En el camino se confirmó otro detalle importante: `docker compose up -d` no siempre recrea un contenedor solo porque cambió un valor de `.env`; la forma confiable de confirmar qué valor tiene el proceso corriendo de verdad es `docker compose exec <servicio> printenv <VAR>`, no leer el archivo `.env` ni confiar en el mensaje de Compose.
+
 ### ❌ Todavía no empezado
 - Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene datos reales en Postgres).
 - Automatizar el `git pull` del deploy vía Routine de Claude Code — queda para la semana 11 del plan, no antes.
 - Flask-Migrate/Alembic — hoy el schema se crea con `db.create_all()` (simplificación documentada a propósito, ver `app.py`); introducir migraciones de verdad antes de que el schema deje de ser trivial.
-- Dominio (DuckDNS) + HTTPS (Let's Encrypt/Certbot) — Andres eligió dejarlo para después de la parte de datos.
-- Panel admin + Flask-Login + endpoints de escritura del API — semana 10, junto con insertar en la BD todo lo documentado de `qa-automation-portfolio`.
+- Demos de IA reales (SDK Anthropic) — semana 13, el placeholder ya está en el frontend.
 - Semanas 11-14: fuera de alcance por ahora (Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
 
 **✅ Hito: la semana 8 del plan queda funcionalmente completa** (SSH, puertos OCI + iptables, Nginx, Gunicorn/Python, systemd service — todo dockerizado en vez de nativo, decisión tomada con Andres).
 
-**✅ Hito parcial: la semana 9 del plan (PostgreSQL + Flask-SQLAlchemy + API REST) también queda funcionalmente completa.** Falta la parte de dominio/SSL de esa misma semana, dejada para después a pedido de Andres.
+**✅ Hito: la semana 9 del plan (PostgreSQL + Flask-SQLAlchemy + API REST + dominio + HTTPS) queda completa.**
+
+**✅ Hito: la semana 10 del plan (frontend público + panel admin con auth real + contenido real cargado) queda completa.** Único punto no implementado a propósito: los demos de IA en vivo, que son contenido explícito de la semana 13.
 
 ---
 
@@ -76,8 +83,19 @@ Todos los pendientes de la semana 9 están cerrados:
 - [x] API REST Flask (lectura) — **hecho 2026-09-29**, `GET /api/projects` y `GET /api/projects/<id>`.
 - [x] Dominio gratuito — **hecho 2026-09-29**, DuckDNS (`andresqe.duckdns.org` → `158.247.123.101`).
 - [x] Nginx + SSL (Let's Encrypt/Certbot) — **hecho 2026-09-29**, certificado real emitido y HTTP→HTTPS redirigiendo, renovación automática verificada con `--dry-run`.
-- [ ] Endpoints de escritura del API (POST/PUT/DELETE) — deliberadamente pospuestos hasta que haya autenticación (semana 10).
+- [x] Endpoints de escritura del API (POST/PUT/DELETE) — **hecho 2026-09-29**, protegidos con `@login_required`.
 - [ ] Flask-Migrate/Alembic — hoy usa `db.create_all()`, simplificación documentada a propósito mientras el schema sea trivial.
+
+---
+
+## 3c. PENDIENTES INMEDIATOS (semana 10)
+
+Todos los pendientes de la semana 10 están cerrados:
+
+- [x] Frontend HTML/CSS consumiendo la API — **hecho 2026-09-29**, fetch a `/api/projects` desde JS vanilla, sin framework.
+- [x] Panel admin con Flask-Login — **hecho 2026-09-29**, login/logout, CRUD completo vía formularios, CSRF.
+- [x] Primera sección de demos interactivos — **hecho 2026-09-29** como placeholder a propósito ("Próximamente"); los demos reales con IA son semana 13.
+- [x] Insertar en la BD todo lo documentado en semanas 4-7 — **hecho 2026-09-29**, 4 entradas reales (UI/Playwright, API testing, CI/CD, Docker+BDD), cada una linkeando a su carpeta/archivo específico del repo.
 
 ---
 
@@ -155,4 +173,19 @@ Andres retomó el dominio/SSL que había pospuesto. Antes de elegir, preguntó e
 
 **Con esto, la semana 9 completa (Postgres + SQLAlchemy + API REST + dominio + HTTPS) queda cerrada.** El deploy guiado paso a paso (iniciado en la sesión de datos) se mantuvo para todo el trabajo de dominio/SSL también — Andres corrió cada comando en su propia terminal SSH.
 
-**Siguiente paso recomendado:** preguntarle a Andres si quiere seguir directo a la **semana 10** (frontend + panel admin + Flask-Login + insertar el resto del contenido real de `qa-automation-portfolio` en la BD) o pausar acá.
+---
+
+**2026-09-29 — Semana 10: frontend, panel admin y contenido real (misma sesión, continuación final).**
+
+Andres pidió seguir directo a la semana 10. Dado el tamaño (auth real, CRUD completo, frontend, contenido), se reestructuró la app Flask a un patrón más prolijo desde el vamos: app-factory (`create_app()`) + blueprints (`admin`, `api`) en vez de seguir agregando todo a un único `app.py` plano — justificado porque la app va a seguir creciendo (demos de IA en semana 13).
+
+1. Se armó todo el código de una vez (modelo `User`, blueprints, CSRF, templates, CSS, `create_admin.py` interactivo, `seed.py` con las 4 entradas reales) y se dejó listo para el mismo flujo de deploy guiado que ya se venía usando.
+2. En el deploy aparecieron dos problemas más, ninguno grave pero ambos con lección real:
+   - Andres tipeó literal los símbolos `<` `>` de un placeholder de instrucción al completar el `.env` (`SECRET_KEY=<valor>` en vez de `SECRET_KEY=valor`) — se corrigió el placeholder para el futuro (usar notación que no se preste a confusión) y se explicó por qué no era grave pero sí valía la pena arreglarlo.
+   - Quedó la duda de si `docker compose up -d` había recreado `app` con el `.env` corregido — se verificó con la fuente de verdad real (`docker compose exec app printenv SECRET_KEY`) en vez de asumir por el mensaje de Compose o por el contenido del archivo `.env`.
+3. Se creó el usuario admin (`create_admin.py`, interactivo con `getpass` — la contraseña real de Andres nunca pasó por este chat ni quedó en ningún archivo) y se recargó el seed con las 4 entradas reales.
+4. Verificación final con el navegador real (no simulada): captura de pantalla de Andres logueado en `/admin` viendo las 4 entradas con Editar/Borrar, y confirmación de que pudo crear y borrar una entrada de prueba sin errores — cierra el circuito completo de lectura Y escritura en producción.
+
+**Con esto, la semana 10 completa (frontend público + panel admin con auth real + escritura protegida + contenido real cargado) queda cerrada**, salvo los demos de IA en vivo, que son contenido explícito de la semana 13 y quedaron como placeholder a propósito en el frontend.
+
+**Siguiente paso recomendado:** preguntarle a Andres si quiere seguir con la **semana 11** (Claude Code avanzado + Routines — automatizar el deploy, notificaciones de CI, etc.) o pausar acá. Con esto, semanas 8, 9 y 10 completas en una sola sesión — buen punto de corte natural si Andres prefiere parar.

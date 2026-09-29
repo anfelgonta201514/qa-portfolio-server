@@ -11,7 +11,7 @@ Todo dockerizado — ver `CLAUDE.md` para el porqué de esta decisión.
 ```
 Nginx (contenedor, proxy inverso, resolución dinámica de upstream, HTTPS)
   → Gunicorn (contenedor, WSGI)
-    → Flask (app Python, API REST de solo lectura)
+    → Flask (app Python — frontend público + API REST + panel admin)
       → PostgreSQL (contenedor, volumen persistente)
 
 Certbot (contenedor) → certificado Let's Encrypt para andresqe.duckdns.org,
@@ -26,9 +26,14 @@ systemd (qa-portfolio.service) → docker compose up -d al boot del servidor
 ```
 qa-portfolio-server/
 ├── app/
-│   ├── app.py           → app Flask: hello world + API REST (/api/projects, solo lectura)
-│   ├── models.py        → modelo SQLAlchemy Project
-│   ├── seed.py           → inserta un proyecto de ejemplo (idempotente)
+│   ├── app.py           → app factory Flask: registra blueprints, Flask-Login, CSRF, config
+│   ├── api.py           → blueprint /api/* — lectura pública, escritura con @login_required
+│   ├── admin.py         → blueprint /admin/* — login/logout, dashboard, alta/edición/borrado
+│   ├── models.py        → modelos SQLAlchemy: Project, User (password hasheado)
+│   ├── create_admin.py  → script interactivo para crear/actualizar el usuario admin (getpass, nunca en texto plano)
+│   ├── seed.py           → carga las 4 entradas reales de qa-automation-portfolio (idempotente)
+│   ├── templates/        → Jinja2: base.html, index.html (público), admin/ (login, dashboard, form)
+│   ├── static/style.css
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── nginx/
@@ -42,11 +47,11 @@ qa-portfolio-server/
 
 ## Estado
 
-✅ **Stack completo funcionando end-to-end, con HTTPS real**: Nginx → Gunicorn → Flask → PostgreSQL, servido en `https://andresqe.duckdns.org` con certificado de Let's Encrypt (renovación automática verificada con `--dry-run`), con las dos capas de firewall abiertas y verificadas, `GET /api/projects` devolviendo datos reales desde la base. HTTP (puerto 80) redirige a HTTPS. systemd levanta todo el stack al boot. Deploy vía `git pull` (no copia manual).
+✅ **Portafolio completo funcionando end-to-end, con HTTPS real**: frontend público en `https://andresqe.duckdns.org` consumiendo `GET /api/projects` (4 entradas reales de `qa-automation-portfolio`, una por semana 4-7), panel admin (`/admin`) con login real (Flask-Login + contraseña hasheada), CRUD completo de proyectos protegido por sesión, CSRF en los formularios. Certificado de Let's Encrypt con renovación automática verificada. Las dos capas de firewall abiertas y verificadas. systemd levanta todo el stack al boot. Deploy vía `git pull`.
 
-Endpoints de escritura (POST/PUT/DELETE) **a propósito no están implementados todavía** — el server es público y no hay autenticación hasta el panel admin (Flask-Login, semana 10).
+Sección "Demos" en la home: **placeholder a propósito** ("Próximamente") — los demos interactivos reales con la API de Anthropic (generador de test cases, analizador de bugs, generador de suites de API) son contenido de la semana 13, no de la 10; acá solo se dejó el lugar reservado en el frontend.
 
-Pendiente: panel admin + auth (semana 10), migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suficiente mientras el schema sea trivial).
+Pendiente: migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suficiente mientras el schema sea trivial), demos de IA (semana 13).
 
 ## Dominio y HTTPS
 
@@ -63,6 +68,16 @@ Pendiente: panel admin + auth (semana 10), migraciones con Flask-Migrate/Alembic
   ```bash
   docker compose run --rm --entrypoint certbot certbot renew --dry-run
   ```
+
+## Panel admin
+
+`/admin/login` — protegido con Flask-Login (contraseña hasheada con Werkzeug, nunca en texto plano) y CSRF en los formularios. Los endpoints de escritura del API (`POST`/`PUT`/`DELETE /api/projects`) requieren la misma sesión.
+
+**Crear o resetear el usuario admin** — interactivo, la contraseña nunca pasa por el chat, un archivo ni un log (usa `getpass`):
+```bash
+docker compose exec -it app python create_admin.py
+```
+Correrlo de nuevo con el mismo usuario actualiza su contraseña.
 
 ## Cómo desplegar (hoy, manual vía git)
 
@@ -91,3 +106,7 @@ sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 **Nginx cachea la IP del upstream — un `app` recreado sin reiniciar `nginx` da 502.** `proxy_pass http://app:8000` con una URL literal resuelve el hostname `app` **una sola vez**, cuando Nginx arranca, y cachea esa IP interna de Docker para siempre. Cuando `app` se recrea (`docker compose up -d --build` después de un cambio en `app/`), le toca una IP nueva — Nginx sigue mandando tráfico a la vieja y todo responde `502 Bad Gateway`, aunque `app` esté sano. Solución permanente aplicada en `nginx.conf`: `resolver 127.0.0.11 valid=10s;` (el DNS interno de Docker) + `proxy_pass` a una **variable** (`set $upstream_app app:8000; proxy_pass http://$upstream_app;`) en vez de una URL literal — así Nginx re-resuelve el hostname en cada request en vez de cachearlo para siempre. Aun así, conviene `docker compose restart nginx` después de cada deploy que recree `app`, por las dudas.
 
 **SQLAlchemy se queda con conexiones muertas si Postgres se reinicia.** Si el contenedor `postgres` se recrea (por ejemplo, al agregarle el healthcheck) mientras `app` sigue corriendo sin reiniciarse, el pool de conexiones de SQLAlchemy queda con conexiones hacia un Postgres que ya no existe. El próximo query revienta con `OperationalError: server closed the connection unexpectedly` en vez de reconectar solo. Solución: `SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}` en `app.py` — antes de usar una conexión del pool, la prueba con un `SELECT 1` liviano y la descarta/reemplaza si está muerta.
+
+**Al copiar un secreto a `.env`, no incluyas los `<` `>` de un placeholder tipo `VALOR=<pega-tu-valor-acá>`.** Esos símbolos son notación para decir "reemplazá esto", no parte del valor — si quedan en el archivo, terminan siendo parte literal del secreto (`SECRET_KEY=<64dc157...>` en vez de `SECRET_KEY=64dc157...`). No rompe nada (sigue siendo un string válido y suficientemente aleatorio), pero es prolijo evitarlo. Verificar siempre con `cat .env` después de editarlo.
+
+**Cambiar un valor en `.env` no siempre alcanza con `docker compose up -d` — a veces hace falta `--force-recreate`.** Compose decide si recrea un contenedor comparando el hash de su configuración ya resuelta (con las variables de `.env` interpoladas); normalmente si el valor efectivo cambió, sí lo detecta y recrea solo. Si hay dudas de que un contenedor tomó un `.env` actualizado, confirmar con la fuente de verdad real — no el archivo, el proceso corriendo: `docker compose exec <servicio> printenv <VARIABLE>`.
