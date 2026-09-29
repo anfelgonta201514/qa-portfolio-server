@@ -1,0 +1,65 @@
+# CLAUDE.md — qa-portfolio-server
+
+Instrucciones permanentes para trabajar en este repo. Arquitectura estable, convenciones y reglas duras — lo que no cambia de sesión a sesión.
+
+> **Para estado actual, pendientes y "qué estábamos haciendo antes de esto"** → ver [`CONTEXT.md`](CONTEXT.md).
+> **Datos de conexión al servidor (IP, usuario, ruta de la clave SSH)** → ver `SERVER_INFO.local.md`, gitignorado, nunca se commitea.
+
+---
+
+## Descripción del proyecto
+
+Servidor y portafolio web personal de Andres Gonzalez (QE en FLYR), semanas 8-14 de un plan de estudio de 14 semanas más amplio (Claude IA + QE Automation). Continúa a [`qa-automation-portfolio`](../qa-automation-portfolio) (semanas 4-7, repo separado): ese repo demuestra el stack de testing (UI+API+CI+Docker+BDD); este proyecto aloja el sitio web que presenta todo eso, con backend propio, panel admin y demos de IA en vivo.
+
+Corre sobre una instancia **Oracle Cloud Always Free** (Ubuntu 20.04 LTS, ARM/aarch64, 4 cores, 24GB RAM, 200GB — de los cuales ~191GB libres) que Andres ya tenía provisionada (usada antes para un servidor de Palworld, completamente dado de baja y libre para este proyecto).
+
+---
+
+## Decisión de arquitectura: todo dockerizado
+
+Nginx, la app Flask/Gunicorn y PostgreSQL corren como **contenedores Docker** (`docker-compose`), con un systemd unit simple que levanta el compose al boot del servidor — no una instalación nativa de Nginx/Python/Gunicorn en el SO.
+
+**Por qué:** el objetivo de este proyecto es un portafolio de **QA Automation/SDET**, no una vacante de SysAdmin/DevOps. La propia tabla de prioridades de mercado del plan de estudio pone a Docker como prioridad explícita (#3, impacto "Medio-Alto"), mientras que administrar Nginx/systemd nativo no aparece como habilidad de mercado buscada para este rol — es infraestructura de soporte para alojar el sitio, no algo que un entrevistador QA vaya a auditar en detalle. Dockerizar todo además reutiliza directamente lo aprendido en la semana 7 de `qa-automation-portfolio` (misma habilidad, refuerza la narrativa de entrevista) y es más simple de mantener en un server ARM recién limpiado que compilar/instalar dependencias nativas de Python 3.13 + Nginx a mano.
+
+**Lo que esto NO evita:** SSH, la Security List de Oracle Cloud y el iptables local del servidor se configuran igual, con o sin Docker — esa parte de "administración de servidor" sigue siendo real.
+
+---
+
+## Arquitectura del servidor
+
+Dos capas de firewall **independientes**, hay que tocar ambas para exponer cualquier puerto nuevo:
+
+1. **Oracle Cloud Security List** — firewall de nube, se edita desde la consola web de OCI (Networking → VCN → Security Lists).
+2. **iptables local** — en el SO. `ufw` está `inactive`; las reglas viven directas en iptables (`INPUT` chain). Verificar con `sudo iptables -L -n -v`.
+
+Estado inicial (antes de este proyecto): ambas capas solo permitían `22/tcp` (SSH) y `8211/udp` (Palworld, sin uso — candidato a limpiar).
+
+```
+Nginx (contenedor, proxy + SSL)
+  → Gunicorn (contenedor, WSGI)
+    → Flask (app Python, contenedor)
+      → PostgreSQL (contenedor, con volumen para persistencia)
+
+SSL: Let's Encrypt vía Certbot (requiere dominio, no IP — ver DuckDNS)
+Deploy: git pull en el servidor + docker compose up -d --build (manual en semana 8-10; automatizado vía Routine en semana 11)
+```
+
+---
+
+## Reglas importantes que debemos respetar
+
+1. **`SERVER_INFO.local.md` nunca se commitea.** Contiene IP pública, usuario SSH y ruta a la clave privada — está en `.gitignore` desde el commit inicial. El repo es **público en GitHub** (`github.com/anfelgonta201514/qa-portfolio-server`) desde el 2026-09-29 — esto es lo único que lo comprometería si se filtrara.
+2. **Nunca pegar el contenido de la clave privada (`.key`/`.pem`) en ningún archivo de este repo**, ni siquiera temporalmente. Se referencia solo por ruta.
+3. **Cualquier cambio de firewall (Security List de Oracle o iptables local) se avisa y confirma antes de aplicarse** — es un servidor real, un error de firewall puede cortar el propio acceso SSH. Antes de tocar reglas, siempre `sudo iptables -L -n -v` o revisar la Security List actual primero (no asumir el estado).
+4. **Nunca mezclar nada del entorno de trabajo privado de Andres (SunExpress UAT / FLYR)** en este repo, igual que en `qa-automation-portfolio`.
+5. **Claude no hace `git commit`/`git push` ni ejecuta comandos con efecto real en el servidor (cambios de firewall, instalar paquetes, levantar/bajar contenedores) sin que Andres lo confirme explícitamente para ese caso puntual.** Los comandos de solo lectura (verificar estado, `docker ps`, `iptables -L`, etc.) no necesitan confirmación previa.
+6. **`docker-compose.yml` y cualquier archivo de config versionado nunca lleva secretos en texto plano** (contraseñas de Postgres, `ANTHROPIC_API_KEY`, `SECRET_KEY` de Flask, credenciales de admin) — van en variables de entorno cargadas desde un `.env` gitignorado en el servidor, nunca committeadas. El repo es público: el código puede verse, los secretos nunca.
+7. **Los commits de este repo NO llevan trailer `Co-Authored-By: Claude`** — mismo motivo y mismo criterio que `qa-automation-portfolio` (repo hermano del mismo portafolio público): el autor real es Andres, la línea solo generaba confusión en el listado de Contributors de GitHub.
+
+---
+
+## Otras instrucciones permanentes
+
+- Este proyecto es la implementación de las **semanas 8-14** de un plan de estudio de 14 semanas más amplio (Claude IA + QE Automation). El contexto de quién es Andres, su nivel y las reglas de evaluación semanal viven en la memoria de Claude Code — si se retoma este proyecto sin esa memoria, no asumir el rol de "profesor de plan de estudio" solo a partir de este archivo.
+- Nivel de Andres en administración Linux (declarado semana 8): conoce lo básico de SSH/terminal; nunca configuró Nginx/systemd/iptables "en serio" antes de este proyecto, pero sí administró un servidor de Palworld en esta misma instancia por 2+ meses (maneja el concepto de mantener un proceso vivo en un server remoto).
+- Cada entregable nuevo debe quedar documentado en el `README.md` del proyecto — mismo hábito que `qa-automation-portfolio`.
