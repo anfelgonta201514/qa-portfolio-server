@@ -6,6 +6,12 @@ from models import Project, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+# pool_pre_ping: antes de usar una conexión del pool, la prueba con un
+# "SELECT 1" liviano. Sin esto, si Postgres se reinicia (ej. un deploy que
+# recrea ese contenedor) mientras `app` sigue corriendo, el pool se queda
+# con conexiones muertas y el próximo request revienta con
+# "server closed the connection unexpectedly" en vez de reconectar solo.
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 db.init_app(app)
 
 # Sin Flask-Migrate todavía: con un solo modelo y sin datos reales en
