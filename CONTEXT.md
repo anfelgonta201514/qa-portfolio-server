@@ -46,7 +46,7 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 
 ### ❌ Todavía no empezado
 - Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene datos reales en Postgres).
-- Deploy automático: **código listo (2026-09-30), falta la configuración** (clave de deploy, `authorized_keys`, secrets de GitHub) — se hace con GitHub Actions, no con una Routine. Ver sección 3d y sección 4.
+- ~~Deploy automático~~ — **hecho 2026-09-30** con GitHub Actions (no con una Routine). Ver sección 3d y sección 4.
 - Flask-Migrate/Alembic — hoy el schema se crea con `db.create_all()` (simplificación documentada a propósito, ver `app.py`); introducir migraciones de verdad antes de que el schema deje de ser trivial.
 - Demos de IA reales (SDK Anthropic) — semana 13, el placeholder ya está en el frontend.
 - Semanas 11-14: fuera de alcance por ahora (Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
@@ -103,7 +103,8 @@ Todos los pendientes de la semana 10 están cerrados:
 
 - [x] Routine nocturna: analiza fallos de CI, identifica flaky tests, notifica Slack — **hecho 2026-09-29**, `trig_018RKk64jV8zHmsMQtNvq1ZB`, corre 11pm hora Bogotá, canal `#ci-alerts`.
 - [x] Review automático de PRs con checklist QA — **hecho 2026-09-30**, `trig_0142zKmhVNHWazPjBgrVPpfi`, vía **cron horario** (`33 * * * *`) en vez del webhook (que nunca disparó). Verificado con un PR real (#2): comentó con la herramienta MCP de GitHub y detectó las violaciones plantadas. Ver sección 4.
-- [ ] Deploy automático del `qa-portfolio-server` — **decidido y con el código listo (2026-09-30)**: GitHub Actions + clave SSH dedicada con forced command (no una Routine). Falta: commit/push de los archivos nuevos y la configuración guiada (clave, `authorized_keys`, secrets, primera corrida). Ver sección 4.
+- [x] Deploy automático del `qa-portfolio-server` — **hecho 2026-09-30**: GitHub Actions + clave SSH dedicada con forced command (no una Routine). Primera corrida manual en verde (deploy + smoke test en 6s). Ver sección 4.
+- [ ] (Opcional) Confirmar el disparo por `push` real con el próximo cambio que no sea solo `.md` — hasta ahora solo se probó el disparo manual (`workflow_dispatch`).
 
 ---
 
@@ -278,9 +279,19 @@ Decisión de Andres: agregar un **cron horario** como mecanismo real y dejar el 
 - `.gitattributes`: fuerza LF en `*.sh`.
 - `README.md`: sección "Deploy automático" con el diseño de seguridad.
 
-**Siguiente paso recomendado:** que Andres revise y commitee esos archivos, y después hacer la configuración guiada. La primera corrida del workflow va a fallar a propósito, porque todavía no hay secrets ni `deploy.sh` en el servidor. Pasos:
-1. `git pull` en el servidor, para que exista `deploy.sh`.
-2. Generar la clave de deploy en la PC de Andres.
-3. Registrarla en `authorized_keys` con `command="bash /home/ubuntu/qa-portfolio-server/deploy/deploy.sh",restrict`.
-4. Cargar los secrets `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER` y `DEPLOY_KNOWN_HOSTS`.
-5. Correr el workflow a mano y después probar con un push real.
+Andres commiteó y pusheó esos archivos (`a793bd1`). La corrida por `push` falló como se esperaba (todavía no había secrets).
+
+**Configuración guiada (misma sesión).** Andres ejecutó cada comando en su propia terminal:
+1. `git pull --ff-only` en el servidor. Se verificó `deploy.sh`: `bash -n` sin errores y 0 caracteres `\r`, así que el `.gitattributes` funcionó.
+2. Clave `ed25519` generada **en la PC de Andres** (`~/.ssh/qa_portfolio_deploy`, sin passphrase, comentario `github-actions-deploy`). Un primer intento se corrió por error en la sesión SSH del servidor y falló con "Permission denied" sin crear nada.
+3. Clave pública agregada a `~/.ssh/authorized_keys` del servidor con `command="bash /home/ubuntu/qa-portfolio-server/deploy/deploy.sh",restrict`. Hay respaldo en `authorized_keys.bak-<fecha>`.
+4. **Prueba de la restricción:** `ssh -i qa_portfolio_deploy ubuntu@<IP> whoami` no imprimió `ubuntu`, sino que ejecutó el deploy completo. Confirma que la clave entra y que el forced command ignora cualquier otro comando.
+5. **Huella del host verificada por dos caminos:** `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` dentro del servidor y `ssh-keyscan` desde afuera dieron la misma huella (`SHA256:XrauocfD...`). Recién entonces se usó como `DEPLOY_KNOWN_HOSTS`.
+6. Andres cargó los 4 secrets. La clave privada se copió con `Get-Content -Raw | Set-Clipboard`, sin mostrarse en pantalla ni pasar por el chat.
+7. **Corrida manual (`workflow_dispatch`): verde.** Configure SSH, deploy y smoke test pasaron en 6s, y el sitio respondió `200` en `/` y `/api/projects` verificado desde afuera.
+
+Detalle menor observado: `docker compose` avisa "requires buildx plugin". Usa el builder clásico y funciona igual que en los deploys manuales. Instalar buildx es opcional.
+
+**Con esto, la semana 11 queda cerrada:** routine nocturna de CI, review de PRs (cron) y deploy automático (GitHub Actions). Lo único pendiente es opcional: ver el disparo por `push` real con el próximo cambio de código.
+
+**Siguiente paso recomendado:** semana 12 del plan (Cowork/MCP), o antes, si Andres quiere, los opcionales (reinicio real del servidor para validar systemd, Flask-Migrate, buildx).

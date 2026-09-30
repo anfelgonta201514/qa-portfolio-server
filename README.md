@@ -47,7 +47,7 @@ qa-portfolio-server/
 
 ## Estado
 
-✅ **Portafolio completo funcionando end-to-end, con HTTPS real**: frontend público en `https://andresqe.duckdns.org` consumiendo `GET /api/projects` (4 entradas reales de `qa-automation-portfolio`, una por semana 4-7), panel admin (`/admin`) con login real (Flask-Login + contraseña hasheada), CRUD completo de proyectos protegido por sesión, CSRF en los formularios. Certificado de Let's Encrypt con renovación automática verificada. Las dos capas de firewall abiertas y verificadas. systemd levanta todo el stack al boot. Deploy vía `git pull`.
+✅ **Portafolio completo funcionando end-to-end, con HTTPS real**: frontend público en `https://andresqe.duckdns.org` consumiendo `GET /api/projects` (4 entradas reales de `qa-automation-portfolio`, una por semana 4-7), panel admin (`/admin`) con login real (Flask-Login + contraseña hasheada), CRUD completo de proyectos protegido por sesión, CSRF en los formularios. Certificado de Let's Encrypt con renovación automática verificada. Las dos capas de firewall abiertas y verificadas. systemd levanta todo el stack al boot. Deploy automático con GitHub Actions en cada push a `main` (SSH con clave restringida + smoke test post-deploy).
 
 Sección "Demos" en la home: **placeholder a propósito** ("Próximamente") — los demos interactivos reales con la API de Anthropic (generador de test cases, analizador de bugs, generador de suites de API) son contenido de la semana 13, no de la 10; acá solo se dejó el lugar reservado en el frontend.
 
