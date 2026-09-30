@@ -46,7 +46,7 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 
 ### ❌ Todavía no empezado
 - Validar el systemd unit con un reinicio real del servidor (opcional, decisión de Andres — es una acción con impacto real en un server que ya tiene datos reales en Postgres).
-- Automatizar el `git pull` del deploy vía Routine de Claude Code — queda para la semana 11 del plan, no antes.
+- Deploy automático: **código listo (2026-09-30), falta la configuración** (clave de deploy, `authorized_keys`, secrets de GitHub) — se hace con GitHub Actions, no con una Routine. Ver sección 3d y sección 4.
 - Flask-Migrate/Alembic — hoy el schema se crea con `db.create_all()` (simplificación documentada a propósito, ver `app.py`); introducir migraciones de verdad antes de que el schema deje de ser trivial.
 - Demos de IA reales (SDK Anthropic) — semana 13, el placeholder ya está en el frontend.
 - Semanas 11-14: fuera de alcance por ahora (Routines, Cowork/MCP, demos IA, lanzamiento) — ver el plan completo en `C:\Users\andre\Documents\proyecto_claude\plan-estudio-andres-qe-ia-contexto-v2.md`.
@@ -102,8 +102,8 @@ Todos los pendientes de la semana 10 están cerrados:
 ## 3d. PENDIENTES INMEDIATOS (semana 11)
 
 - [x] Routine nocturna: analiza fallos de CI, identifica flaky tests, notifica Slack — **hecho 2026-09-29**, `trig_018RKk64jV8zHmsMQtNvq1ZB`, corre 11pm hora Bogotá, canal `#ci-alerts`.
-- [ ] Routine con trigger en PR nuevo: review automático con checklist QA — **intentado 2026-09-29, sin éxito**. Se armó la routine (`trig_0142zKmhVNHWazPjBgrVPpfi`) y se logró enganchar `create_webhook_trigger` (schema real documentado en la sección 4, requirió instalar la GitHub App "Claude" en el repo), pero 3 eventos reales de prueba (`opened`/`closed`/`reopened`) no dispararon ningún run. Sin diagnóstico posible desde esta sesión (no hay visibilidad de logs de entrega de webhooks). Ver sección 4 para las 3 opciones de cómo retomar.
-- [ ] Deploy automático del `qa-portfolio-server` vía Routine — pendiente de decidir con Andres si darle la clave SSH del servidor a un agente en la nube, y cómo.
+- [x] Review automático de PRs con checklist QA — **hecho 2026-09-30**, `trig_0142zKmhVNHWazPjBgrVPpfi`, vía **cron horario** (`33 * * * *`) en vez del webhook (que nunca disparó). Verificado con un PR real (#2): comentó con la herramienta MCP de GitHub y detectó las violaciones plantadas. Ver sección 4.
+- [ ] Deploy automático del `qa-portfolio-server` — **decidido y con el código listo (2026-09-30)**: GitHub Actions + clave SSH dedicada con forced command (no una Routine). Falta: commit/push de los archivos nuevos y la configuración guiada (clave, `authorized_keys`, secrets, primera corrida). Ver sección 4.
 
 ---
 
@@ -258,4 +258,29 @@ Andres pidió seguir con la pieza de PRs. Resumen de lo hecho, lo que funcionó,
 
 **Nota para quien retome:** el repo `qa-automation-portfolio` ahora tiene la GitHub App "Claude" instalada con acceso a todos sus repos — ver nota cruzada en el propio `CONTEXT.md`/`CLAUDE.md` de ese repo.
 
-**Siguiente paso recomendado:** al retomar, decidir entre las 3 opciones de arriba para la pieza de PRs, y separadamente resolver el deploy automático del servidor (pendiente de decisión de seguridad sobre SSH, todavía no discutida).
+*(Histórico: las 3 opciones de arriba se resolvieron en la entrada siguiente.)*
+
+---
+
+**2026-09-30 — Semana 11: review de PRs resuelto y deploy automático diseñado (sesión nueva).**
+
+**Review de PRs.** Andres eligió reintentar el webhook. Antes de probar se revisó el log real de la routine nocturna y se corrigió un supuesto: `curl` a `api.github.com` **sí** funciona para leer desde el sandbox. El problema real era comentar, que requiere autenticación. Se reescribió el prompt: comenta con la herramienta MCP de GitHub (`gh` solo como respaldo), deja una línea `DIAG:` con lo que recibió del evento y no duplica comentarios del mismo head sha.
+
+La prueba separó los dos problemas con un PR real (#2, rama `test/pr-review-routine-2`, archivo de prueba con un `time.sleep()` y un XPath plantados):
+1. **Webhook: no disparó** (5 minutos de espera, cuarto evento real sin runs). Queda confirmado que falla del lado de la plataforma.
+2. **Corrida manual con el PR abierto: funcionó completa en 19s.** Reportó "sin payload de evento", encontró el PR, publicó el comentario con `mcp__github__add_issue_comment` y detectó las 2 violaciones plantadas más una tercera real (locator inline fuera de un Page Object), sin inventar problemas.
+
+Decisión de Andres: agregar un **cron horario** como mecanismo real y dejar el webhook enganchado por si la plataforma lo arregla. La plataforma asignó el minuto 33 (`33 * * * *`). La rama de prueba se borró y el PR #2 quedó cerrado.
+
+**Deploy automático.** Andres eligió GitHub Actions + clave dedicada en vez de una Routine con acceso SSH, para que una credencial de producción no pase por un agente de IA. Se verificó en la Security List que el puerto 22 ya acepta `0.0.0.0/0`, así que los runners de GitHub pueden entrar sin tocar el firewall. Archivos nuevos, **sin commitear**:
+- `.github/workflows/deploy.yml`: push a `main` (ignora `.md`) o manual; SSH con huella fijada; smoke test HTTPS a `/` y `/api/projects` con reintentos; `concurrency` para no solapar deploys.
+- `deploy/deploy.sh`: `git pull --ff-only` → `docker compose up -d --build` → `restart nginx`.
+- `.gitattributes`: fuerza LF en `*.sh`.
+- `README.md`: sección "Deploy automático" con el diseño de seguridad.
+
+**Siguiente paso recomendado:** que Andres revise y commitee esos archivos, y después hacer la configuración guiada. La primera corrida del workflow va a fallar a propósito, porque todavía no hay secrets ni `deploy.sh` en el servidor. Pasos:
+1. `git pull` en el servidor, para que exista `deploy.sh`.
+2. Generar la clave de deploy en la PC de Andres.
+3. Registrarla en `authorized_keys` con `command="bash /home/ubuntu/qa-portfolio-server/deploy/deploy.sh",restrict`.
+4. Cargar los secrets `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, `DEPLOY_USER` y `DEPLOY_KNOWN_HOSTS`.
+5. Correr el workflow a mano y después probar con un push real.

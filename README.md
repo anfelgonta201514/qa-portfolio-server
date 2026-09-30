@@ -79,17 +79,31 @@ docker compose exec -it app python create_admin.py
 ```
 Correrlo de nuevo con el mismo usuario actualiza su contraseña.
 
-## Cómo desplegar (hoy, manual vía git)
+## Cómo desplegar
 
-El servidor tiene un `git clone` de este mismo repo en `~/qa-portfolio-server` (público, no necesita credenciales). Para desplegar un cambio:
+El servidor tiene un `git clone` de este mismo repo en `~/qa-portfolio-server` (público, no necesita credenciales). Los pasos del deploy viven en [`deploy/deploy.sh`](deploy/deploy.sh): `git pull --ff-only` → `docker compose up -d --build` → `docker compose restart nginx`.
 
+**El `docker compose restart nginx` del final no es opcional** — ver la nota de "resolución de DNS" en troubleshooting más abajo. Reiniciarlo siempre es seguro (tarda menos de un segundo).
+
+### Deploy automático (GitHub Actions)
+
+Cada push a `main` (salvo cambios solo en `.md`) dispara [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), que entra por SSH al servidor, corre `deploy/deploy.sh` y después hace un **smoke test** contra el sitio real por HTTPS (`/` y `/api/projects`, con reintentos). Un deploy solo cuenta como exitoso si el sitio responde después. También se puede disparar a mano desde Actions → Deploy → Run workflow.
+
+**Por qué GitHub Actions y no una Routine de Claude Code** (el plan original proponía una Routine): automatizar el deploy implica guardar una credencial de acceso a producción en algún lado. Un workflow de GitHub con una clave dedicada es el estándar de la industria, y la clave nunca pasa por un agente de IA.
+
+**Diseño de seguridad:**
+- **Clave SSH dedicada solo a deploy**, distinta de la clave personal. Se guarda como secret de GitHub (`DEPLOY_SSH_KEY`) y nunca entra al repo.
+- **Forced command en el servidor:** en `~/.ssh/authorized_keys` la clave está registrada con `command="bash /home/ubuntu/qa-portfolio-server/deploy/deploy.sh",restrict`. Esa clave **solo** puede ejecutar el script de deploy: sin shell interactiva, sin port forwarding y sin ejecutar otros comandos. Si se filtrara, lo único que permite es redeployar lo que ya está en `main`.
+- **Huella del host fijada** (`DEPLOY_KNOWN_HOSTS`) en vez de `StrictHostKeyChecking=no`, para no aceptar a ciegas un servidor impostor.
+- **`concurrency`**: nunca corren dos deploys a la vez.
+- **`git pull --ff-only`**: si alguien editó a mano archivos versionados en el servidor, el deploy falla en vez de pisarlos o mergearlos.
+
+**Secrets del repo** (Settings → Secrets and variables → Actions): `DEPLOY_SSH_KEY` (clave privada de deploy), `DEPLOY_HOST` (IP del servidor), `DEPLOY_USER` (`ubuntu`), `DEPLOY_KNOWN_HOSTS` (salida de `ssh-keyscan -t ed25519 <IP>`, verificada contra la huella real del servidor).
+
+**Deploy manual** (si Actions no está disponible), desde el servidor:
 ```bash
-ssh -i <clave> ubuntu@<IP> "cd ~/qa-portfolio-server && git pull && docker compose up -d --build && docker compose restart nginx"
+bash ~/qa-portfolio-server/deploy/deploy.sh
 ```
-
-**El `docker compose restart nginx` del final no es opcional** — ver la nota de "resolución de DNS" en troubleshooting más abajo. Si `app` no se recreó en este deploy (por ejemplo, un cambio que no toca `app/`), se puede omitir; si hay dudas, incluirlo siempre es seguro (nginx tarda menos de un segundo en reiniciar).
-
-(Automatizar este paso vía Routine de Claude Code queda para la semana 11 del plan.)
 
 ## Notas de troubleshooting
 

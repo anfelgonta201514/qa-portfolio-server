@@ -41,7 +41,9 @@ Nginx (contenedor, proxy + SSL)
       → PostgreSQL (contenedor, con volumen para persistencia)
 
 SSL: Let's Encrypt vía Certbot (requiere dominio, no IP — ver DuckDNS)
-Deploy: git pull en el servidor + docker compose up -d --build (manual en semana 8-10; automatizado vía Routine en semana 11)
+Deploy: deploy/deploy.sh (git pull --ff-only + docker compose up -d --build + restart nginx), disparado por
+        GitHub Actions (.github/workflows/deploy.yml) en cada push a main, vía SSH con clave dedicada
+        restringida por forced command — NO vía Routine de Claude (decisión de seguridad, ver README)
 ```
 
 ---
@@ -51,11 +53,12 @@ Deploy: git pull en el servidor + docker compose up -d --build (manual en semana
 Dos "routines" (agentes de Claude Code programados en la nube, independientes de esta sesión) vigilan `qa-automation-portfolio` — no viven en ningún repo, se administran desde `claude.ai/code/routines` o la herramienta `RemoteTrigger`:
 
 1. **`trig_018RKk64jV8zHmsMQtNvq1ZB`** — chequeo nocturno de CI, **funcionando**. Corre todas las noches a las 11pm hora Bogotá (`0 4 * * *` UTC), reporta el estado del run más reciente de `qa-automation-portfolio` a Slack (`#ci-alerts`), y solo profundiza en tests específicos (bajando logs de GitHub) si hubo actividad nueva en las últimas 24-48hs.
-2. **`trig_0142zKmhVNHWazPjBgrVPpfi`** — review automático de PRs con checklist QA, **configurada pero sin funcionar todavía**. Tiene un `create_webhook_trigger` enganchado a eventos `pull_request` de `qa-automation-portfolio` (requirió instalar la GitHub App "Claude" en ese repo — ver nota cruzada en el `CONTEXT.md` de `qa-automation-portfolio`), pero 3 eventos reales de prueba no dispararon ningún run. Sin diagnóstico posible desde una sesión de Claude Code normal (no hay visibilidad de logs de entrega de webhooks). Detalle completo del troubleshooting en `CONTEXT.md`, sección 4 (semana 11, segunda entrada).
+2. **`trig_0142zKmhVNHWazPjBgrVPpfi`** — review automático de PRs con checklist QA, **funcionando vía cron horario** (`33 * * * *`). Busca PRs abiertos, revisa el diff contra `CLAUDE.md` de `qa-automation-portfolio` y comenta con la herramienta MCP `mcp__github__add_issue_comment` (verificado con un PR real). No duplica: si ya comentó el mismo head sha, no vuelve a comentar. También tiene un `create_webhook_trigger` enganchado a `pull_request` (requirió la GitHub App "Claude"), pero **el webhook nunca disparó** (4 eventos reales probados) — se deja enganchado por si la plataforma lo arregla; el cron es el mecanismo real. Detalle en `CONTEXT.md`, sección 4 (semana 11).
 
 **Notas técnicas sobre `RemoteTrigger` que no están en la documentación del skill `/schedule`:**
 - El sandbox de las routines tiene un proxy de salida que bloquea conexiones directas a dominios externos (confirmado con `hooks.slack.com` y con el blob storage de logs de GitHub) — cualquier integración externa debe pasar por un conector MCP adjunto a la routine (`mcp_connections`), no por `curl` directo.
 - El nombre de una herramienta MCP dentro de una routine usa el campo `name` del conector (ej. `mcp__Slack__slack_send_message`), no el `connector_uuid` como en una sesión normal de Claude Code — hay que buscarlo con `ToolSearch` dentro de la propia routine si no se sabe de antemano.
+- Lectura por `curl` a `api.github.com` SÍ funciona desde el sandbox (lo bloqueado es `hooks.slack.com` y el blob storage de logs). Escribir en GitHub (comentarios) requiere la herramienta MCP de GitHub (`mcp__github__*`), que el sandbox trae disponible — no `curl` anónimo ni `gh` (no autenticado).
 - `create_webhook_trigger` (acción de `RemoteTrigger`) no está documentada más allá de una línea en el skill — el schema real (`hook_type`, `source`, `scope_id`, `events`) se descubrió a prueba y error. `hook_type: "app"` requiere la GitHub App "Claude" instalada en el repo de destino.
 
 ---

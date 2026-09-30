@@ -1,0 +1,69 @@
+name: Deploy
+
+# Deploy automático al servidor Oracle Cloud en cada push a main.
+# Diseño de seguridad (detalle en README, "Deploy automático"):
+# - Clave SSH dedicada solo a deploy (no la clave personal de Andres),
+#   guardada como secret de GitHub, nunca en el repo.
+# - En el servidor esa clave está restringida con command="..." en
+#   authorized_keys: solo puede ejecutar deploy/deploy.sh, nada más.
+# - La huella del host va fijada en un secret (known_hosts), en vez de
+#   StrictHostKeyChecking=no, para no aceptar a ciegas un servidor impostor.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+# Nunca dos deploys a la vez: si llegan dos pushes seguidos, el segundo
+# espera a que termine el primero en vez de pisarse en el servidor.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Run deploy on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        # No se pasa ningún comando: el forced command de authorized_keys
+        # decide qué se ejecuta (deploy/deploy.sh).
+        run: ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST"
+
+      # Smoke test post-deploy: el deploy no cuenta como exitoso solo porque
+      # el script terminó; tiene que responder el sitio real por HTTPS.
+      # Reintenta porque app/nginx tardan unos segundos en quedar listos.
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS --max-time 10 https://andresqe.duckdns.org/api/projects > /dev/null \
+               && curl -fsS --max-time 10 -o /dev/null https://andresqe.duckdns.org/; then
+              echo "Sitio respondiendo OK (intento $i)"
+              exit 0
+            fi
+            echo "Intento $i fallido, reintentando en 6s..."
+            sleep 6
+          done
+          echo "El sitio no respondió después del deploy"
+          exit 1
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

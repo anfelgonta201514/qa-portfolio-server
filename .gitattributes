@@ -1,0 +1,3 @@
+# Scripts que corren en el servidor Linux: siempre LF, sin importar la
+# config de git de quien comitee (con CRLF, bash falla con "$'\r': command not found").
+*.sh text eol=lf
