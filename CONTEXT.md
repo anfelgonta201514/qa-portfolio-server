@@ -99,6 +99,14 @@ Todos los pendientes de la semana 10 están cerrados:
 
 ---
 
+## 3d. PENDIENTES INMEDIATOS (semana 11)
+
+- [x] Routine nocturna: analiza fallos de CI, identifica flaky tests, notifica Slack — **hecho 2026-09-29**, `trig_018RKk64jV8zHmsMQtNvq1ZB`, corre 11pm hora Bogotá, canal `#ci-alerts`.
+- [ ] Routine con trigger en PR nuevo: review automático con checklist QA — **intentado 2026-09-29, sin éxito**. Se armó la routine (`trig_0142zKmhVNHWazPjBgrVPpfi`) y se logró enganchar `create_webhook_trigger` (schema real documentado en la sección 4, requirió instalar la GitHub App "Claude" en el repo), pero 3 eventos reales de prueba (`opened`/`closed`/`reopened`) no dispararon ningún run. Sin diagnóstico posible desde esta sesión (no hay visibilidad de logs de entrega de webhooks). Ver sección 4 para las 3 opciones de cómo retomar.
+- [ ] Deploy automático del `qa-portfolio-server` vía Routine — pendiente de decidir con Andres si darle la clave SSH del servidor a un agente en la nube, y cómo.
+
+---
+
 ## 4. ÚLTIMO PUNTO DE TRABAJO
 
 **2026-09-18 — Arranque de la semana 8.**
@@ -188,4 +196,66 @@ Andres pidió seguir directo a la semana 10. Dado el tamaño (auth real, CRUD co
 
 **Con esto, la semana 10 completa (frontend público + panel admin con auth real + escritura protegida + contenido real cargado) queda cerrada**, salvo los demos de IA en vivo, que son contenido explícito de la semana 13 y quedaron como placeholder a propósito en el frontend.
 
-**Siguiente paso recomendado:** preguntarle a Andres si quiere seguir con la **semana 11** (Claude Code avanzado + Routines — automatizar el deploy, notificaciones de CI, etc.) o pausar acá. Con esto, semanas 8, 9 y 10 completas en una sola sesión — buen punto de corte natural si Andres prefiere parar.
+---
+
+**2026-09-29 — Semana 11: Routine nocturna de CI + Slack (misma sesión, continuación).**
+
+Andres pidió arrancar la semana 11 (Claude Code avanzado + Routines). De las 3 piezas que pide el plan (routine nocturna de CI→Slack, review automático en PRs, deploy automático del server), se relevaron las limitaciones reales de la herramienta de Routines disponible en esta sesión antes de prometer nada:
+- Sin acceso a la lista de conectores de claude.ai desde esta sesión (permiso faltante) — Andres no tenía ningún conector conectado todavía. Se le explicó que Slack/Jira se pueden crear gratis como persona individual, sin ser empresa.
+- La API de Routines solo soporta disparo por horario (cron) o corrida única — no por evento de GitHub (PR abierta) directo, salvo una acción `create_webhook_trigger` no explorada todavía (candidata para la pieza de PRs, pendiente).
+- El deploy automático del servidor implicaría darle a un agente en la nube la clave SSH de producción — pospuesto a propósito, es una decisión de seguridad que merece su propia conversación.
+
+Se arrancó por la routine nocturna (la única de las 3 sin decisiones pendientes):
+
+1. Andres conectó el conector de Slack en claude.ai y creó un canal `#ci-alerts` vía un workspace propio gratuito.
+2. Se probó un webhook de Incoming Webhooks de Slack — funcionó desde esta sesión, pero **la routine en la nube no pudo usarlo**: el sandbox tiene un proxy de salida que bloquea conexiones directas a dominios externos como `hooks.slack.com` (`connect_rejected... organization policy`). Se cambió al conector MCP de Slack (`mcp__Slack__slack_send_message`, nombre distinto al de esta sesión — cada entorno nombra la herramienta distinto según el campo `name` del conector) agregándolo a `allowed_tools` de la routine.
+3. Primera corrida de prueba: la routine se adaptó sola (usó `ToolSearch` para encontrar el nombre real de la herramienta de Slack) y mandó un resumen real al canal.
+4. Andres preguntó si la routine seguiría funcionando si se agregan/quitan/editan casos de prueba — se le explicó la diferencia entre detección a nivel de *step* de GitHub Actions (lo que hacía) vs. a nivel de *test individual* de pytest (lo que no hacía). Pidió la versión más profunda.
+5. Se mejoró el prompt para bajar el log de cada job candidato y extraer el nombre EXACTO del test que falló (buscando la línea `FAILED ruta::test - excepción` que imprime pytest con `-v`). La descarga directa por `curl` al blob storage de logs de GitHub también estaba bloqueada por el mismo proxy — la routine encontró sola una herramienta MCP de GitHub (`get_job_logs`) como alternativa. Resultado real: identificó que varios fallos "bloqueantes" históricos eran en realidad el conflicto de plugins de Allure (ya resuelto hoy más temprano en la sesión) y encontró el test exacto de una flakiness real en `test_room_battery.py` (colisión de ID conocida, documentada en el README de esa suite).
+6. Andres notó que el diseño mezclaba "¿cómo está el sitio ahora?" con "¿hubo flakiness en las últimas semanas?", y que estar reportando historial ya resuelto cada noche no tenía sentido. Se reestructuró el prompt: el titular del mensaje es siempre el run MÁS RECIENTE (esa es la respuesta real a "¿cómo está el sitio?"), y el análisis de flakiness profundo solo se dispara si hubo actividad NUEVA en las últimas 24-48hs — si no, una sola línea aclarando que no hay nada nuevo, sin desenterrar historia vieja.
+7. Verificado con una corrida real: mensaje limpio "✅ run más reciente OK (fecha, commit), todos los steps bloqueantes pasaron... no hubo actividad en 24-48hs, no se buscó flakiness".
+
+**Routine activa:** `trig_018RKk64jV8zHmsMQtNvq1ZB` — corre todas las noches a las 11pm hora Bogotá (`0 4 * * *` UTC), repo `qa-automation-portfolio`, canal Slack `#ci-alerts`. Link: https://claude.ai/code/routines/trig_018RKk64jV8zHmsMQtNvq1ZB
+
+**Pendiente de la semana 11:** review automático en PRs (evaluar `create_webhook_trigger`) y deploy automático del servidor (pendiente de decisión de seguridad sobre SSH).
+
+---
+
+**2026-09-29 — Semana 11: intento de review automático en PRs vía webhook (misma sesión, continuación — sin resolver, queda documentado para retomar).**
+
+Andres pidió seguir con la pieza de PRs. Resumen de lo hecho, lo que funcionó, y dónde quedó trabado:
+
+1. **Se creó una segunda routine** (`trig_0142zKmhVNHWazPjBgrVPpfi`, "qa-automation-portfolio: review automatico de PRs") con un prompt de checklist QA basado en las reglas reales de `qa-automation-portfolio/CLAUDE.md` (naming de tests, jerarquía de locators, no `time.sleep()`, datos únicos, cosas que no se tocan sin consultar, sync playwright/Dockerfile, uso de `attach_screenshot`). Como `RemoteTrigger.create` exige `cron_expression` o `run_once_at` (no hay opción "solo webhook, sin horario"), se le puso un `run_once_at` en el futuro lejano (2027-01-01) como placeholder inofensivo.
+2. **`create_webhook_trigger`** no está documentado en el skill de `/schedule` más allá de una línea genérica. Se descubrió el schema real a prueba y error (cada intento fallido devolvió el nombre del campo que faltaba o sobraba):
+   - `filter.actions` → rechazado, no existe filtro por tipo de acción (`opened` vs `synchronize` vs `closed`) — el trigger dispara con CUALQUIER acción del evento.
+   - `scope`/`repository` como objeto o string libre → rechazados.
+   - Shape que sí funcionó:
+     ```json
+     {
+       "routine_trigger_id": "<id de la routine>",
+       "hook_type": "app",
+       "source": "github",
+       "scope_id": "<owner>/<repo>",
+       "events": ["pull_request"]
+     }
+     ```
+   - Primer intento con esta shape reveló que hacía falta instalar la **GitHub App "Claude"** en el repo (`https://github.com/apps/claude/installations/select_target`) — Andres la instaló (con acceso a "All repositories", permisos de lectura/escritura sobre PRs/issues/actions/etc., visible en `github.com/settings/installations`).
+   - Con la app instalada, `create_webhook_trigger` devolvió `200 OK` sin warnings — quedó registrado (`trigger_id` del webhook: `a4a7861b-a6ab-47ab-9aad-920ea6814968`).
+3. **Prueba real, sin éxito:** se creó una rama (`test/pr-review-routine`, ya borrada) con un archivo dummy (`PR_REVIEW_TEST.md`, nunca llegó a `master`) y se abrió el PR #1. Se generaron 3 eventos reales distintos (`opened`, `closed`, `reopened`) y **ninguno disparó la routine** (`list_runs` siguió vacío los 3 veces). No hay manera, desde las herramientas de esta sesión, de ver los logs de entrega de webhooks de GitHub ni del lado de Anthropic — no se pudo diagnosticar la causa raíz.
+4. **PR de prueba cerrado y rama borrada** (local y remoto) a pedido de Andres — no quedó nada de esto en `master`.
+
+**Hipótesis no descartadas para la próxima sesión** (en orden de probabilidad, sin verificar):
+- El primer evento (`opened`) puede haber ocurrido mientras la instalación de la GitHub App todavía no estaba 100% propagada (la captura de Andres decía "installed 10 minutes ago" en un momento posterior a cuando se abrió el PR por primera vez) — pero los eventos posteriores (`closed`, `reopened`), varios minutos después, tampoco dispararon nada, lo que debilita esta hipótesis.
+- Puede ser un problema específico de esta función (`create_webhook_trigger`) todavía inmaduro en la plataforma — no hay forma de confirmarlo sin soporte de Anthropic.
+- Puede haber un desfasaje entre el `scope_id` que devolvió la API (`"github.com/anfelgonta201514/qa-automation-portfolio"`, con el prefijo `github.com/` agregado por el server) y cómo GitHub identifica el repo internamente al enviar el webhook — no verificado.
+
+**Routine y webhook quedan configurados tal cual** (`trig_0142zKmhVNHWazPjBgrVPpfi`, enabled, con el webhook `a4a7861b-a6ab-47ab-9aad-920ea6814968` enganchado) por si el problema se resuelve solo del lado de la plataforma en el futuro — no hace daño dejarlos así.
+
+**Opciones para retomar, discutidas con Andres y no descartadas:**
+1. Reemplazar el enfoque por una routine con **cron cada 1 hora** (el mínimo permitido) que busque PRs abiertos sin comentario de review todavía — no es instantáneo, pero usa el mecanismo de routines que SÍ se probó confiable (la nocturna de CI).
+2. Dejarlo como está y reintentar otro día (quizás la plataforma lo arregle sola, o aparezca más documentación de `create_webhook_trigger`).
+3. Abandonar esta pieza — de las 3 de la semana 11, la más valiosa (routine nocturna de CI + Slack) ya quedó funcionando sólido.
+
+**Nota para quien retome:** el repo `qa-automation-portfolio` ahora tiene la GitHub App "Claude" instalada con acceso a todos sus repos — ver nota cruzada en el propio `CONTEXT.md`/`CLAUDE.md` de ese repo.
+
+**Siguiente paso recomendado:** al retomar, decidir entre las 3 opciones de arriba para la pieza de PRs, y separadamente resolver el deploy automático del servidor (pendiente de decisión de seguridad sobre SSH, todavía no discutida).
