@@ -15,7 +15,7 @@
     <div><dt>{{ t.meta_role }}</dt><dd>{{ t.meta_role_value }}</dd></div>
     <div><dt>{{ t.meta_stack }}</dt><dd>Playwright · pytest · Allure</dd></div>
     <div><dt>{{ t.meta_browsers }}</dt><dd>Chromium · Firefox · WebKit</dd></div>
-    <div><dt>{{ t.meta_code }}</dt><dd><a href="{{ links.repo }}/tree/master/ui-tests/booking-flow" rel="noopener">{{ t.view_github }}</a></dd></div>
+    <div><dt>{{ t.meta_code }}</dt><dd><a href="{{ links.repo }}/tree/master/ui-tests/booking-flow" target="_blank" rel="noopener noreferrer">{{ t.view_github }}</a></dd></div>
   </dl>
 </section>
 
@@ -51,7 +51,7 @@
     {% endfor %}
   </div>
   <pre class="code"><code>{{ case.snippet }}</code></pre>
-  <p class="muted small"><a href="{{ links.repo }}/blob/master/ui-tests/booking-flow/features/booking.feature" rel="noopener">{{ t.snippet_note }}</a></p>
+  <p class="muted small"><a href="{{ links.repo }}/blob/master/ui-tests/booking-flow/features/booking.feature" target="_blank" rel="noopener noreferrer">{{ t.snippet_note }}</a></p>
 </section>
 
 <section class="three-col">
@@ -62,6 +62,6 @@
 
 <nav class="pager">
   <a href="{{ urls.experience }}"><span class="mono muted small">{{ t.prev }}</span><strong>{{ t.nav_experience }}</strong></a>
-  <a href="{{ links.repo }}/tree/master/api-tests/restful-booker" class="pager-next" rel="noopener"><span class="mono muted small">{{ t.next_case_soon }}</span><strong>{{ t.case_api_short }}</strong></a>
+  <a href="{{ links.repo }}/tree/master/api-tests/restful-booker" class="pager-next" target="_blank" rel="noopener noreferrer"><span class="mono muted small">{{ t.next_case_soon }}</span><strong>{{ t.case_api_short }}</strong></a>
 </nav>
 {% endblock %}
