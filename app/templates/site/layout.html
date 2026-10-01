@@ -10,6 +10,10 @@
   <link rel="alternate" hreflang="{{ alt_lang }}" href="{{ request.url_root.rstrip('/') }}{{ path }}">
   {% endfor %}
   <link rel="alternate" hreflang="x-default" href="{{ request.url_root.rstrip('/') }}{{ alternates.es }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <meta name="theme-color" content="#121019">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -56,14 +60,17 @@
 
     <div class="follow">
       <span class="follow-title">{{ t.follow }}</span>
-      <a href="{{ links.github }}" rel="noopener">{{ brand("github", 16) }}<span>GitHub</span></a>
-      <a href="{{ links.linkedin }}" rel="noopener">{{ brand("linkedin", 16) }}<span>LinkedIn</span></a>
+      <a href="{{ links.github }}" target="_blank" rel="noopener noreferrer">{{ brand("github", 16) }}<span>GitHub</span></a>
+      <a href="{{ links.linkedin }}" target="_blank" rel="noopener noreferrer">{{ brand("linkedin", 16) }}<span>LinkedIn</span></a>
     </div>
   </aside>
 
   <div class="content">
     <header class="topbar">
-      <div class="crumbs">{% block crumbs %}portfolio / <span>overview</span>{% endblock %}</div>
+      <div class="crumbs-wrap">
+        <a class="brand-mark" href="{{ urls.overview }}" aria-label="Andrés González — Overview"><img src="{{ url_for('static', filename='img/logo-mark.png') }}" alt="" width="36" height="36"></a>
+        <div class="crumbs">{% block crumbs %}portfolio / <span>overview</span>{% endblock %}</div>
+      </div>
       <div class="topbar-actions">
         <span class="status-pill"><span class="dot"></span>andresqe.duckdns.org · HTTPS · up</span>
         <nav class="lang-switch" aria-label="{{ t.lang_label }}">

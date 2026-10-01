@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, current_app, render_template, send_from_directory
 
 import content
 from models import Project
@@ -68,6 +68,11 @@ def _experience(lang):
 
 def _case_ui(lang):
     return _render("case_ui", lang, "site/case_ui.html", case=content.CASE_UI[lang])
+
+
+@public_bp.get("/favicon.ico")
+def favicon():
+    return send_from_directory(Path(current_app.static_folder) / "img", "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
 VIEWS = {"overview": _overview, "experience": _experience, "case_ui": _case_ui}

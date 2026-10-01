@@ -85,6 +85,7 @@ Diseño tipo dashboard (menú lateral + header) con páginas separadas en vez de
 - **Textos en `app/content.py`**, nunca sueltos en los templates — una frase se cambia en los dos idiomas en el mismo lugar.
 - **Los proyectos siguen saliendo de la base** (se editan desde `/admin`). La base guarda un solo idioma: `PROJECT_EN` en `content.py` traduce los 4 proyectos cargados por título; uno nuevo se muestra con su texto original en `/en/` hasta agregarle traducción ahí. `CASE_STUDIES` define qué proyecto enlaza a su página de caso de estudio (el resto enlaza a su código en GitHub).
 - **CV descargable**: `app/static/cv/CV_Andres_Gonzalez.pdf` (versión pública, **sin teléfono** — el repo y el sitio son públicos), el mismo archivo para ES y EN. El botón se oculta solo si el archivo no existe.
+- **Logo / favicon**: monograma AG con check (variante "Minimalista"), en `app/static/img/` — `favicon.ico` (16–64px, también servido en `/favicon.ico`), `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png` y `logo-mark.png` (header). Paleta: fondo `#0B0F14`, logo `#F1F5F9`, check/éxito `#14B8A6` (mismo verde que usa el sitio para estados OK).
 - **Contacto por correo**: los botones "Escríbeme" / "Hablemos" son `mailto:` normales (funcionan sin JS); con JS abren un `<dialog>` para elegir Gmail, Outlook web, la app de correo del sistema o copiar la dirección.
 - "Este sitio" y "Demos IA" están en el menú como **"pronto"**: hoy son secciones del Overview, sus páginas propias vienen después (los demos son semana 13).
 

@@ -14,7 +14,7 @@
   --muted: #a8a3ba;
   --accent: #ff8f6e;
   --accent-hover: #ffab8f;
-  --ok: #7ee0b5;
+  --ok: #14b8a6;
   --radius: 20px;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -183,6 +183,9 @@ ul { margin: 0; padding: 0; list-style: none; }
   border-radius: 16px;
   padding: 12px 14px 12px 20px;
 }
+.crumbs-wrap { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.brand-mark { display: inline-flex; flex-shrink: 0; }
+.brand-mark img { display: block; width: 36px; height: 36px; }
 .crumbs { font-family: var(--mono); font-size: 14px; color: var(--muted); }
 .crumbs a { color: var(--muted); }
 .crumbs span { color: var(--text); }
