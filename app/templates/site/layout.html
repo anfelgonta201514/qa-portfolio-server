@@ -1,4 +1,4 @@
-{% from "site/_icons.html" import icon %}
+{% from "site/_icons.html" import icon, brand %}
 <!doctype html>
 <html lang="{{ lang }}">
 <head>
@@ -45,19 +45,19 @@
       <span class="available-status"><span class="dot"></span>{{ t.available }}</span>
       <span class="available-title">{{ t.open_to }}</span>
       <span class="available-meta">{{ t.remote }}</span>
-      <a class="btn btn-primary" href="mailto:{{ links.email }}">{{ t.talk }}</a>
+      <a class="btn btn-primary" href="mailto:{{ links.email }}" data-email-dialog>{{ t.talk }}</a>
     </div>
 
     {% if cv_url %}
-    <a class="cv-link" href="{{ cv_url }}" download>
+    <a class="cv-link" href="{{ cv_url }}" download="CV_Andres_Gonzalez.pdf">
       <span>{{ t.cv_file }}</span>{{ icon("download") }}
     </a>
     {% endif %}
 
     <div class="follow">
       <span class="follow-title">{{ t.follow }}</span>
-      <a href="{{ links.github }}" rel="noopener">GitHub</a>
-      <a href="{{ links.linkedin }}" rel="noopener">LinkedIn</a>
+      <a href="{{ links.github }}" rel="noopener">{{ brand("github", 16) }}<span>GitHub</span></a>
+      <a href="{{ links.linkedin }}" rel="noopener">{{ brand("linkedin", 16) }}<span>LinkedIn</span></a>
     </div>
   </aside>
 
@@ -78,11 +78,52 @@
       {% block content %}{% endblock %}
     </main>
 
+    <dialog id="email-dialog" class="email-dialog" aria-labelledby="email-dialog-title">
+      <div class="email-dialog-head">
+        <h2 id="email-dialog-title">{{ t.email_title }}</h2>
+        <button type="button" class="icon-btn" data-close aria-label="{{ t.close }}">{{ icon("close") }}</button>
+      </div>
+      <p class="muted">{{ t.email_text }}</p>
+      <div class="email-row">
+        <span class="mono">{{ links.email }}</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-copy="{{ links.email }}" data-copied="{{ t.email_copied }}">{{ icon("copy", 16) }}<span>{{ t.email_copy }}</span></button>
+      </div>
+      <div class="email-options">
+        <a class="btn btn-primary" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to={{ links.email }}" target="_blank" rel="noopener">{{ t.email_gmail }}</a>
+        <a class="btn btn-ghost" href="https://outlook.live.com/mail/0/deeplink/compose?to={{ links.email }}" target="_blank" rel="noopener">{{ t.email_outlook }}</a>
+        <a class="btn btn-ghost" href="mailto:{{ links.email }}">{{ icon("mail", 16) }}<span>{{ t.email_app }}</span></a>
+      </div>
+    </dialog>
+
     <footer class="site-footer">
       <span>© 2026 Andrés González</span>
       <span class="mono">{{ t.footer }}</span>
     </footer>
   </div>
 </div>
+<script>
+  // Los enlaces "Escríbeme" son mailto: normales (funcionan sin JS); con JS
+  // abren un diálogo para elegir Gmail, Outlook, la app de correo o copiar.
+  (function () {
+    var dialog = document.getElementById("email-dialog");
+    if (!dialog || typeof dialog.showModal !== "function") return;
+    document.querySelectorAll("[data-email-dialog]").forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        dialog.showModal();
+      });
+    });
+    dialog.querySelector("[data-close]").addEventListener("click", function () { dialog.close(); });
+    dialog.addEventListener("click", function (event) { if (event.target === dialog) dialog.close(); });
+    var copyBtn = dialog.querySelector("[data-copy]");
+    copyBtn.addEventListener("click", function () {
+      var label = copyBtn.querySelector("span"), original = label.textContent;
+      navigator.clipboard.writeText(copyBtn.dataset.copy).then(function () {
+        label.textContent = copyBtn.dataset.copied;
+        setTimeout(function () { label.textContent = original; }, 2000);
+      });
+    });
+  })();
+</script>
 </body>
 </html>

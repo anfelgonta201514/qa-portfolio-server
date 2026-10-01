@@ -158,15 +158,19 @@ ul { margin: 0; padding: 0; list-style: none; }
   justify-content: space-between;
   border: 1px solid var(--border);
   border-radius: 14px;
+  gap: 8px;
   padding: 14px 16px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
+.cv-link span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-link svg { flex-shrink: 0; }
 
 .follow { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
 .follow-title { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.follow a { color: var(--text-3); }
+.follow a { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; color: var(--text-3); }
+.follow a:hover { color: var(--text); }
 
 /* ---------- header */
 .topbar {
@@ -352,6 +356,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .contact h2 { font-size: 28px; font-weight: 800; }
 .contact p { margin-top: 8px; color: var(--text-3); }
 .contact .btn-ghost { border-color: #4a4266; }
+.contact .actions { flex-shrink: 0; flex-wrap: nowrap; }
 
 /* ---------- experiencia (página) */
 .jobs { display: flex; flex-direction: column; gap: 16px; }
@@ -414,6 +419,49 @@ ul { margin: 0; padding: 0; list-style: none; }
   overflow-x: auto;
 }
 
+/* ---------- diálogo de correo */
+button.btn { font: inherit; font-weight: 700; background: transparent; cursor: pointer; }
+.btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.email-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--border-2);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+}
+.email-dialog::backdrop { background: rgba(10, 8, 15, 0.7); }
+.email-dialog[open] { display: flex; flex-direction: column; gap: 16px; }
+.email-dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: -8px -8px 0 0; }
+.email-dialog-head h2 { font-size: 22px; font-weight: 800; }
+.email-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 10px 10px 14px;
+  font-size: 14px;
+}
+.email-options { display: flex; flex-direction: column; gap: 10px; }
+.btn svg { flex-shrink: 0; }
+
 /* ---------- footer */
 .site-footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 8px 4px; font-size: 13px; color: var(--muted); }
 
@@ -440,6 +488,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   .job { grid-template-columns: 1fr; gap: 16px; padding: 24px; }
   .two-col, .three-col, .case-meta, .project-grid { grid-template-columns: 1fr; }
   .contact { flex-direction: column; align-items: flex-start; padding: 28px; }
+  .contact .actions { flex-wrap: wrap; }
   .hero-case, .section.card { padding: 24px; }
   .pager { flex-direction: column; }
   .pager-next { align-items: flex-start; text-align: left; }
