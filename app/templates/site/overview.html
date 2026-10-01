@@ -1,4 +1,5 @@
 {% extends "site/layout.html" %}
+{% from "site/_icons.html" import brand %}
 
 {% block content %}
 <section class="card hero">
@@ -98,8 +99,9 @@
     <p>{{ t.cta_text }}</p>
   </div>
   <div class="actions">
-    <a class="btn btn-primary" href="mailto:{{ links.email }}">{{ t.write }}</a>
-    <a class="btn btn-ghost" href="{{ links.linkedin }}" rel="noopener">LinkedIn</a>
+    <a class="btn btn-primary" href="mailto:{{ links.email }}" data-email-dialog>{{ t.write }}</a>
+    <a class="btn btn-ghost" href="{{ links.linkedin }}" rel="noopener">{{ brand("linkedin") }}<span>LinkedIn</span></a>
+    <a class="btn btn-ghost" href="{{ links.github }}" rel="noopener">{{ brand("github") }}<span>GitHub</span></a>
   </div>
 </section>
 {% endblock %}

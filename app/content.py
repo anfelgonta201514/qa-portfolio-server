@@ -16,7 +16,7 @@ PAGES = {
     "case_ui": {"es": "/proyectos/ui-playwright", "en": "/en/projects/ui-playwright"},
 }
 
-LINKEDIN = "https://linkedin.com/in/andres-felipe-gonzalez-tamayo"
+LINKEDIN = "https://www.linkedin.com/in/andres-felipe-gonzalez-tamayo-6a383619a"
 GITHUB = "https://github.com/anfelgonta201514"
 REPO = "https://github.com/anfelgonta201514/qa-automation-portfolio"
 EMAIL = "andresfelgonta@gmail.com"
@@ -46,6 +46,14 @@ T = {
         "lang_label": "Idioma",
         "menu": "Menú",
         "footer": "Hecho, desplegado y probado en andresqe.duckdns.org",
+        "email_title": "Escríbeme",
+        "email_text": "Elige cómo quieres enviarme el correo, o copia la dirección.",
+        "email_copy": "Copiar",
+        "email_copied": "¡Copiado!",
+        "email_gmail": "Abrir en Gmail",
+        "email_outlook": "Abrir en Outlook",
+        "email_app": "Usar mi app de correo",
+        "close": "Cerrar",
         "crumb_experience": "experiencia",
         "crumb_projects": "proyectos",
         # overview
@@ -143,6 +151,14 @@ T = {
         "lang_label": "Language",
         "menu": "Menu",
         "footer": "Built, deployed and tested at andresqe.duckdns.org",
+        "email_title": "Email me",
+        "email_text": "Choose how you want to send the email, or copy the address.",
+        "email_copy": "Copy",
+        "email_copied": "Copied!",
+        "email_gmail": "Open in Gmail",
+        "email_outlook": "Open in Outlook",
+        "email_app": "Use my mail app",
+        "close": "Close",
         "crumb_experience": "experience",
         "crumb_projects": "projects",
         "eyebrow": "Hi, I’m Andrés · QA Automation Engineer",
