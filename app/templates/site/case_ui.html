@@ -51,13 +51,13 @@
     {% endfor %}
   </div>
   <pre class="code"><code>{{ case.snippet }}</code></pre>
-  <p class="muted small">{{ t.snippet_note }}</p>
+  <p class="muted small"><a href="{{ links.repo }}/blob/master/ui-tests/booking-flow/features/booking.feature" rel="noopener">{{ t.snippet_note }}</a></p>
 </section>
 
 <section class="three-col">
-  <div class="card kpi"><span class="kpi-label">{{ t.result_tests }}</span><span class="kpi-value">[N]</span><span class="kpi-sub">UI + BDD</span></div>
+  <div class="card kpi"><span class="kpi-label">{{ t.result_tests }}</span><span class="kpi-value">8</span><span class="kpi-sub">{{ t.result_tests_sub }}</span></div>
   <div class="card kpi"><span class="kpi-label">{{ t.result_browsers }}</span><span class="kpi-value">3</span><span class="kpi-sub">{{ t.result_browsers_sub }}</span></div>
-  <div class="card kpi"><span class="kpi-label">{{ t.result_time }}</span><span class="kpi-value">[X] min</span><span class="kpi-sub">{{ t.result_time_sub }}</span></div>
+  <div class="card kpi"><span class="kpi-label">{{ t.result_time }}</span><span class="kpi-value">~9 min</span><span class="kpi-sub">{{ t.result_time_sub }}</span></div>
 </section>
 
 <nav class="pager">

@@ -117,12 +117,13 @@ T = {
         "approach": "Cada página es un objeto con sus acciones, los tests solo hablan el idioma del negocio, los datos viven fuera del código y cada fallo deja evidencia (captura + reporte Allure).",
         "decisions_title": "Decisiones clave",
         "run_title": "Cómo corre",
-        "snippet_note": "Fragmento ilustrativo: reemplazar por un escenario real del repositorio.",
-        "result_tests": "Tests en la suite",
+        "snippet_note": "Escenario real de ui-tests/booking-flow/features/booking.feature.",
+        "result_tests": "Escenarios en la suite",
+        "result_tests_sub": "15 casos con las baterías de Excel",
         "result_browsers": "Navegadores por ejecución",
         "result_browsers_sub": "matrix en GitHub Actions",
-        "result_time": "Tiempo de la suite en CI",
-        "result_time_sub": "imagen Docker cacheada",
+        "result_time": "Tiempo del pipeline en CI",
+        "result_time_sub": "API + UI en 3 navegadores en paralelo",
     },
     "en": {
         "html_title": "Andrés González — QA Automation Engineer",
@@ -137,7 +138,7 @@ T = {
         "open_to": "Open to QA Automation / SDET roles",
         "remote": "Remote · GMT-5",
         "talk": "Let’s talk",
-        "cv_file": "Resume_Andres_Gonzalez.pdf",
+        "cv_file": "CV_Andres_Gonzalez.pdf",
         "follow": "Follow me",
         "lang_label": "Language",
         "menu": "Menu",
@@ -210,12 +211,13 @@ T = {
         "approach": "Each page is an object with its own actions, tests speak only the business language, data lives outside the code, and every failure leaves evidence (screenshot + Allure report).",
         "decisions_title": "Key decisions",
         "run_title": "How it runs",
-        "snippet_note": "Illustrative snippet: replace with a real scenario from the repository.",
-        "result_tests": "Tests in the suite",
+        "snippet_note": "Real scenario from ui-tests/booking-flow/features/booking.feature (written in Spanish).",
+        "result_tests": "Scenarios in the suite",
+        "result_tests_sub": "15 cases with the Excel data batteries",
         "result_browsers": "Browsers per run",
         "result_browsers_sub": "GitHub Actions matrix",
-        "result_time": "Suite time in CI",
-        "result_time_sub": "cached Docker image",
+        "result_time": "Pipeline time in CI",
+        "result_time_sub": "API + UI on 3 browsers in parallel",
     },
 }
 
@@ -334,6 +336,17 @@ JOBS = {
     ],
 }
 
+# Escenario real de ui-tests/booking-flow/features/booking.feature en
+# qa-automation-portfolio. Se muestra tal cual (en español) en ambos idiomas.
+REAL_SCENARIO = (
+            "Feature: Reserva de habitación\n"
+            "  Scenario: Reserva exitosa con datos válidos\n"
+            "    Given que estoy en la página de inicio de Restful Booker Platform\n"
+            "    When busco disponibilidad y selecciono una habitación\n"
+            "    And completo el formulario de reserva con datos de contacto válidos\n"
+            "    Then la reserva queda confirmada"
+        )
+
 CASE_UI = {
     "es": {
         "decisions": [
@@ -342,13 +355,7 @@ CASE_UI = {
             ("03", "BDD sobre los mismos objetos", "Los escenarios Gherkin reutilizan los Page Objects: una sola fuente de verdad para dos audiencias."),
         ],
         "steps": ["git push", "imagen Docker", "Chromium · Firefox · WebKit", "reporte Allure", "badge ✓"],
-        "snippet": (
-            "Scenario: Un huésped reserva una habitación disponible\n"
-            "  Given estoy en la página principal del hotel\n"
-            "  When elijo una habitación y fechas libres\n"
-            "  And completo mis datos de contacto\n"
-            "  Then veo la confirmación de la reserva"
-        ),
+        "snippet": REAL_SCENARIO,
     },
     "en": {
         "decisions": [
@@ -357,13 +364,7 @@ CASE_UI = {
             ("03", "BDD on the same objects", "Gherkin scenarios reuse the Page Objects: one source of truth for two audiences."),
         ],
         "steps": ["git push", "Docker image", "Chromium · Firefox · WebKit", "Allure report", "badge ✓"],
-        "snippet": (
-            "Scenario: A guest books an available room\n"
-            "  Given I am on the hotel home page\n"
-            "  When I pick a room and free dates\n"
-            "  And I fill in my contact details\n"
-            "  Then I see the booking confirmation"
-        ),
+        "snippet": REAL_SCENARIO,
     },
 }
 
