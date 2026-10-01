@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 
@@ -33,6 +33,11 @@ def create_app():
 
     from admin import admin_bp
     from api import api_bp
+    from public import public_bp
+
+    # Sitio público (overview, experiencia, casos de estudio) en español e
+    # inglés — rutas y textos en public.py / content.py.
+    app.register_blueprint(public_bp)
 
     app.register_blueprint(api_bp)
     # La API es para consumo programático (frontend público, futuros
@@ -46,10 +51,6 @@ def create_app():
     # create_all() alcanza. Introducir Alembic antes de que deje de serlo.
     with app.app_context():
         db.create_all()
-
-    @app.get("/")
-    def index():
-        return render_template("index.html")
 
     return app
 
