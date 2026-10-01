@@ -1,0 +1,67 @@
+{% extends "site/layout.html" %}
+
+{% block title %}{{ t.case_ui_short }} · {{ t.html_title }}{% endblock %}
+{% block crumbs %}<a href="{{ urls.overview }}">portfolio</a> / {{ t.crumb_projects }} / <span>ui-playwright</span>{% endblock %}
+
+{% block content %}
+<section class="card hero-case">
+  <div class="row-start">
+    <span class="pill">{{ t.case_tag }}</span>
+    <span class="mono passing small">● CI passing</span>
+  </div>
+  <h1 class="h1-md">{{ t.case_h1 }}</h1>
+  <p class="lead">{{ t.case_lead }}</p>
+  <dl class="case-meta">
+    <div><dt>{{ t.meta_role }}</dt><dd>{{ t.meta_role_value }}</dd></div>
+    <div><dt>{{ t.meta_stack }}</dt><dd>Playwright · pytest · Allure</dd></div>
+    <div><dt>{{ t.meta_browsers }}</dt><dd>Chromium · Firefox · WebKit</dd></div>
+    <div><dt>{{ t.meta_code }}</dt><dd><a href="{{ links.repo }}/tree/master/ui-tests/booking-flow" rel="noopener">{{ t.view_github }}</a></dd></div>
+  </dl>
+</section>
+
+<section class="two-col">
+  <div class="card section">
+    <p class="eyebrow">{{ t.problem_label }}</p>
+    <p class="body">{{ t.problem }}</p>
+  </div>
+  <div class="card section">
+    <p class="eyebrow">{{ t.approach_label }}</p>
+    <p class="body">{{ t.approach }}</p>
+  </div>
+</section>
+
+<section class="section">
+  <h2>{{ t.decisions_title }}</h2>
+  <div class="three-col">
+    {% for num, title, why in case.decisions %}
+    <div class="card decision">
+      <span class="mono accent">{{ num }}</span>
+      <strong>{{ title }}</strong>
+      <p>{{ why }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card section">
+  <h2>{{ t.run_title }}</h2>
+  <div class="flow mono">
+    {% for step in case.steps %}
+    <span{% if loop.last %} class="ok"{% endif %}>{{ step }}</span>{% if not loop.last %}<span class="arrow">→</span>{% endif %}
+    {% endfor %}
+  </div>
+  <pre class="code"><code>{{ case.snippet }}</code></pre>
+  <p class="muted small">{{ t.snippet_note }}</p>
+</section>
+
+<section class="three-col">
+  <div class="card kpi"><span class="kpi-label">{{ t.result_tests }}</span><span class="kpi-value">[N]</span><span class="kpi-sub">UI + BDD</span></div>
+  <div class="card kpi"><span class="kpi-label">{{ t.result_browsers }}</span><span class="kpi-value">3</span><span class="kpi-sub">{{ t.result_browsers_sub }}</span></div>
+  <div class="card kpi"><span class="kpi-label">{{ t.result_time }}</span><span class="kpi-value">[X] min</span><span class="kpi-sub">{{ t.result_time_sub }}</span></div>
+</section>
+
+<nav class="pager">
+  <a href="{{ urls.experience }}"><span class="mono muted small">{{ t.prev }}</span><strong>{{ t.nav_experience }}</strong></a>
+  <a href="{{ links.repo }}/tree/master/api-tests/restful-booker" class="pager-next" rel="noopener"><span class="mono muted small">{{ t.next_case_soon }}</span><strong>{{ t.case_api_short }}</strong></a>
+</nav>
+{% endblock %}

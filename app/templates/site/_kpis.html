@@ -1,0 +1,9 @@
+<section class="kpis">
+  {% for label, value, sub in kpis %}
+  <div class="card kpi">
+    <span class="kpi-label">{{ label }}</span>
+    <span class="kpi-value">{{ value }}</span>
+    <span class="kpi-sub">{{ sub }}</span>
+  </div>
+  {% endfor %}
+</section>

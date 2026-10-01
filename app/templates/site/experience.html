@@ -1,0 +1,60 @@
+{% extends "site/layout.html" %}
+{% from "site/_icons.html" import icon %}
+
+{% block title %}{{ t.nav_experience }} · {{ t.html_title }}{% endblock %}
+{% block crumbs %}<a href="{{ urls.overview }}">portfolio</a> / <span>{{ t.crumb_experience }}</span>{% endblock %}
+
+{% block content %}
+<section class="card hero hero-compact">
+  <div class="hero-text">
+    <p class="eyebrow">{{ t.exp_label }}</p>
+    <h1 class="h1-md">{{ t.exp_h1_a }}<span class="accent">{{ t.exp_h1_b }}</span>{{ t.exp_h1_c }}</h1>
+    <p class="lead">{{ t.exp_lead }}</p>
+  </div>
+  {% if cv_url %}
+  <a class="btn btn-primary" href="{{ cv_url }}" download>{{ t.download_cv }} {{ icon("download") }}</a>
+  {% endif %}
+</section>
+
+<section class="jobs">
+  {% for job in jobs %}
+  <article class="card job">
+    <div class="job-meta">
+      <span class="{{ 'tag-current' if job.current else 'muted small strong' }}">{{ t.status_current if job.current else t.status_previous }}</span>
+      <span class="mono">{{ job.dates }}</span>
+      <span class="muted small">{{ job.place }}</span>
+    </div>
+    <div class="job-body">
+      <div>
+        <h2>{{ job.role }}</h2>
+        <p class="company">{{ job.company }}</p>
+      </div>
+      <ul class="points">
+        {% for point in job.points %}<li>{{ point }}</li>{% endfor %}
+      </ul>
+      <ul class="chips mono">
+        {% for s in job.stack %}<li>{{ s }}</li>{% endfor %}
+      </ul>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="two-col">
+  <div class="card section">
+    <p class="eyebrow">{{ t.edu_label }}</p>
+    <div class="fact"><strong>{{ t.edu_1 }}</strong><span class="muted small">{{ t.edu_1_status }}</span></div>
+    <div class="fact"><strong>{{ t.edu_2 }}</strong><span class="muted small">{{ t.edu_2_status }}</span></div>
+  </div>
+  <div class="card section">
+    <p class="eyebrow">{{ t.langs_label }}</p>
+    <div class="fact"><strong>{{ t.lang_es }}</strong><span class="muted small">{{ t.lang_es_level }}</span></div>
+    <div class="fact"><strong>{{ t.lang_en }}</strong><span class="muted small">{{ t.lang_en_level }}</span></div>
+  </div>
+</section>
+
+<nav class="pager">
+  <a href="{{ urls.overview }}"><span class="mono muted small">{{ t.back }}</span><strong>Overview</strong></a>
+  <a href="{{ urls.case_ui }}" class="pager-next"><span class="mono muted small">{{ t.next }}</span><strong>{{ t.case_ui_short }}</strong></a>
+</nav>
+{% endblock %}

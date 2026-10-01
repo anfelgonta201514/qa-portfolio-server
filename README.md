@@ -32,8 +32,10 @@ qa-portfolio-server/
 │   ├── models.py        → modelos SQLAlchemy: Project, User (password hasheado)
 │   ├── create_admin.py  → script interactivo para crear/actualizar el usuario admin (getpass, nunca en texto plano)
 │   ├── seed.py           → carga las 4 entradas reales de qa-automation-portfolio (idempotente)
-│   ├── templates/        → Jinja2: base.html, index.html (público), admin/ (login, dashboard, form)
-│   ├── static/style.css
+│   ├── public.py        → blueprint del sitio público: overview, experiencia y casos de estudio, en ES y EN
+│   ├── content.py       → todos los textos del sitio público en español e inglés (+ traducción EN de los proyectos)
+│   ├── templates/        → Jinja2: site/ (sitio público), base.html + admin/ (login, dashboard, form)
+│   ├── static/           → site.css (sitio público), style.css (admin), img/ (foto), cv/ (PDF del CV, opcional)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── nginx/
@@ -68,6 +70,22 @@ Pendiente: migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suf
   ```bash
   docker compose run --rm --entrypoint certbot certbot renew --dry-run
   ```
+
+## Sitio público (multipágina, ES/EN)
+
+Diseño tipo dashboard (menú lateral + header) con páginas separadas en vez de una sola página larga: el Overview concentra lo que un reclutador ve sin hacer clic (rol, años, métricas de impacto, experiencia resumida, proyectos, contacto) y las demás páginas dan profundidad para un entrevistador técnico.
+
+| Página | Español | Inglés |
+|---|---|---|
+| Overview | `/` | `/en/` |
+| Experiencia | `/experiencia` | `/en/experience` |
+| Caso de estudio UI | `/proyectos/ui-playwright` | `/en/projects/ui-playwright` |
+
+- **Idioma por URL**, no por cookie ni JS: el selector ES/EN del header enlaza a la misma página en el otro idioma, y cada página declara su par con `<link rel="alternate" hreflang>` para que los buscadores indexen las dos versiones.
+- **Textos en `app/content.py`**, nunca sueltos en los templates — una frase se cambia en los dos idiomas en el mismo lugar.
+- **Los proyectos siguen saliendo de la base** (se editan desde `/admin`). La base guarda un solo idioma: `PROJECT_EN` en `content.py` traduce los 4 proyectos cargados por título; uno nuevo se muestra con su texto original en `/en/` hasta agregarle traducción ahí. `CASE_STUDIES` define qué proyecto enlaza a su página de caso de estudio (el resto enlaza a su código en GitHub).
+- **CV descargable**: el botón aparece solo si existe `app/static/cv/CV_Andres_Gonzalez_es.pdf` / `_en.pdf`. Usar una versión pública (sin teléfono) — el repo y el sitio son públicos.
+- "Este sitio" y "Demos IA" están en el menú como **"pronto"**: hoy son secciones del Overview, sus páginas propias vienen después (los demos son semana 13).
 
 ## Panel admin
 

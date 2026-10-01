@@ -1,0 +1,88 @@
+{% from "site/_icons.html" import icon %}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t.html_title }}{% endblock %}</title>
+  <meta name="description" content="{{ t.meta_description }}">
+  {% for alt_lang, path in alternates.items() %}
+  <link rel="alternate" hreflang="{{ alt_lang }}" href="{{ request.url_root.rstrip('/') }}{{ path }}">
+  {% endfor %}
+  <link rel="alternate" hreflang="x-default" href="{{ request.url_root.rstrip('/') }}{{ alternates.es }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+</head>
+<body>
+<div class="shell">
+  {% set nav = [
+    ("overview", t.nav_overview, "overview", urls.overview, False),
+    ("experience", t.nav_experience, "experience", urls.experience, False),
+    ("case_ui", t.nav_projects, "projects", urls.case_ui, False),
+    ("site", t.nav_site, "site", urls.overview ~ "#arquitectura", True),
+    ("demos", t.nav_demos, "demos", urls.overview ~ "#demos", True),
+  ] %}
+  <aside class="sidebar">
+    <a class="profile" href="{{ urls.overview }}">
+      <img src="{{ url_for('static', filename='img/andres.jpg') }}" alt="Andrés González" width="56" height="56">
+      <span class="profile-text">
+        <span class="profile-name">Andrés González</span>
+        <span class="profile-role">QA Automation · SDET</span>
+      </span>
+    </a>
+
+    <nav class="side-nav" aria-label="{{ t.menu }}">
+      {% for key, label, ico, href, soon in nav %}
+      <a href="{{ href }}"{% if key == page %} aria-current="page"{% endif %}>
+        {{ icon(ico) }}<span>{{ label }}</span>{% if soon %}<span class="soon">{{ t.soon }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <div class="available">
+      <span class="available-status"><span class="dot"></span>{{ t.available }}</span>
+      <span class="available-title">{{ t.open_to }}</span>
+      <span class="available-meta">{{ t.remote }}</span>
+      <a class="btn btn-primary" href="mailto:{{ links.email }}">{{ t.talk }}</a>
+    </div>
+
+    {% if cv_url %}
+    <a class="cv-link" href="{{ cv_url }}" download>
+      <span>{{ t.cv_file }}</span>{{ icon("download") }}
+    </a>
+    {% endif %}
+
+    <div class="follow">
+      <span class="follow-title">{{ t.follow }}</span>
+      <a href="{{ links.github }}" rel="noopener">GitHub</a>
+      <a href="{{ links.linkedin }}" rel="noopener">LinkedIn</a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <div class="crumbs">{% block crumbs %}portfolio / <span>overview</span>{% endblock %}</div>
+      <div class="topbar-actions">
+        <span class="status-pill"><span class="dot"></span>andresqe.duckdns.org · HTTPS · up</span>
+        <nav class="lang-switch" aria-label="{{ t.lang_label }}">
+          {{ icon("globe", 16) }}
+          <a href="{{ lang_urls.es }}" hreflang="es" lang="es" title="Español"{% if lang == "es" %} aria-current="true"{% endif %}>ES</a>
+          <a href="{{ lang_urls.en }}" hreflang="en" lang="en" title="English"{% if lang == "en" %} aria-current="true"{% endif %}>EN</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <span>© 2026 Andrés González</span>
+      <span class="mono">{{ t.footer }}</span>
+    </footer>
+  </div>
+</div>
+</body>
+</html>
