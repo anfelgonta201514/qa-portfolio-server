@@ -52,12 +52,12 @@
       <p class="eyebrow">{{ t.proj_label }}</p>
       <h2>{{ t.proj_title }}</h2>
     </div>
-    <a class="link-strong" href="{{ links.repo }}" rel="noopener">{{ t.repo }}</a>
+    <a class="link-strong" href="{{ links.repo }}" target="_blank" rel="noopener noreferrer">{{ t.repo }}</a>
   </div>
   {% if projects %}
   <div class="project-grid">
     {% for p in projects %}
-    <a class="card project-card" href="{{ p.case_url or p.repo_url or links.repo }}"{% if not p.case_url %} rel="noopener"{% endif %}>
+    <a class="card project-card" href="{{ p.case_url or p.repo_url or links.repo }}"{% if not p.case_url %} target="_blank" rel="noopener noreferrer"{% endif %}>
       <span class="row-between">
         <span class="pill">{{ p.tag }}</span>
         <span class="mono passing">● passing</span>

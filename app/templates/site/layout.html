@@ -96,8 +96,8 @@
         <button type="button" class="btn btn-ghost btn-sm" data-copy="{{ links.email }}" data-copied="{{ t.email_copied }}">{{ icon("copy", 16) }}<span>{{ t.email_copy }}</span></button>
       </div>
       <div class="email-options">
-        <a class="btn btn-primary" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to={{ links.email }}" target="_blank" rel="noopener">{{ t.email_gmail }}</a>
-        <a class="btn btn-ghost" href="https://outlook.live.com/mail/0/deeplink/compose?to={{ links.email }}" target="_blank" rel="noopener">{{ t.email_outlook }}</a>
+        <a class="btn btn-primary" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to={{ links.email }}" target="_blank" rel="noopener noreferrer">{{ t.email_gmail }}</a>
+        <a class="btn btn-ghost" href="https://outlook.live.com/mail/0/deeplink/compose?to={{ links.email }}" target="_blank" rel="noopener noreferrer">{{ t.email_outlook }}</a>
         <a class="btn btn-ghost" href="mailto:{{ links.email }}">{{ icon("mail", 16) }}<span>{{ t.email_app }}</span></a>
       </div>
     </dialog>
