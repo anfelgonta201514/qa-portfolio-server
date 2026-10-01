@@ -60,7 +60,7 @@ T = {
         "eyebrow": "Hola, soy Andrés · QA Automation Engineer",
         "h1_a": "Calidad que se puede ",
         "h1_b": "demostrar",
-        "lead": "Construyo frameworks de automatización escalables en Python, Selenium y Playwright, y los conecto a CI/CD para que cada pull request llegue con su regresión corrida. Hoy, como Software QA Engineer II en FLYR Labs.",
+        "lead": "Construyo frameworks de automatización escalables en Python, Selenium y Playwright, y los conecto a CI/CD para que cada pull request llegue con su regresión corrida. Hoy, como Quality Engineer II y QA Automation Engineer en FLYR Labs.",
         "cta_experience": "Ver experiencia",
         "cta_case": "Leer un caso de estudio",
         "badge": "años en automatización",
@@ -94,10 +94,13 @@ T = {
         "status_current": "● Actual",
         "status_previous": "Anterior",
         "edu_label": "Formación",
-        "edu_1": "Tecnología en Análisis y Programación de Sistemas",
-        "edu_1_status": "Finalizada · 2022",
-        "edu_2": "Ingeniería de Sistemas",
-        "edu_2_status": "En curso · 7.º semestre aprobado",
+        "edu_1": "Ingeniería de Sistemas",
+        "edu_1_status": "En curso · 7.º semestre aprobado · Universidad Autónoma de Manizales",
+        "edu_2": "Tecnología en Análisis y Programación de Sistemas",
+        "edu_2_status": "Finalizada · 2020 · Universidad Autónoma de Manizales",
+        "edu_3": "Técnico Profesional en Programación de Computadores",
+        "edu_3_status": "2017 – 2019 · Universidad Autónoma de Manizales",
+        "current_role": "Quality Engineer II | QA Automation Engineer",
         "langs_label": "Idiomas",
         "lang_es": "Español",
         "lang_es_level": "Nativo",
@@ -164,7 +167,7 @@ T = {
         "eyebrow": "Hi, I’m Andrés · QA Automation Engineer",
         "h1_a": "Quality you can ",
         "h1_b": "prove",
-        "lead": "I build scalable test automation frameworks in Python, Selenium and Playwright, and wire them into CI/CD so every pull request ships with its regression already run. Currently a Software QA Engineer II at FLYR Labs.",
+        "lead": "I build scalable test automation frameworks in Python, Selenium and Playwright, and wire them into CI/CD so every pull request ships with its regression already run. Currently a Quality Engineer II and QA Automation Engineer at FLYR Labs.",
         "cta_experience": "View experience",
         "cta_case": "Read a case study",
         "badge": "years in test automation",
@@ -197,10 +200,13 @@ T = {
         "status_current": "● Current",
         "status_previous": "Previous",
         "edu_label": "Education",
-        "edu_1": "Technology in Systems Analysis and Programming",
-        "edu_1_status": "Completed · 2022",
-        "edu_2": "Systems Engineering",
-        "edu_2_status": "In progress · 7th semester completed",
+        "edu_1": "Systems Engineering",
+        "edu_1_status": "In progress · 7th semester completed · Universidad Autónoma de Manizales",
+        "edu_2": "Technology in Systems Analysis and Programming",
+        "edu_2_status": "Completed · 2020 · Universidad Autónoma de Manizales",
+        "edu_3": "Professional Technician in Computer Programming",
+        "edu_3_status": "2017 – 2019 · Universidad Autónoma de Manizales",
+        "current_role": "Quality Engineer II | QA Automation Engineer",
         "langs_label": "Languages",
         "lang_es": "Spanish",
         "lang_es_level": "Native",
@@ -254,12 +260,12 @@ KPIS = {
 
 PAST_ROLES = {
     "es": [
-        ("QA Analyst", "Netactica", "2022 — 2024"),
+        ("QA Engineer (manual y automatización)", "Netactica", "2022 — 2024"),
         ("QA Analyst", "Transfiriendo S.A.", "2022"),
         ("Líder de Desarrollo e Implementación", "Sigma Ingeniería", "2020 — 2021"),
     ],
     "en": [
-        ("QA Analyst", "Netactica", "2022 — 2024"),
+        ("QA Engineer (Manual & Automation)", "Netactica", "2022 — 2024"),
         ("QA Analyst", "Transfiriendo S.A.", "2022"),
         ("Development & Implementation Lead", "Sigma Ingeniería", "2020 — 2021"),
     ],
@@ -269,7 +275,7 @@ JOBS = {
     "es": [
         {
             "current": True, "dates": "Feb 2024 — hoy", "place": "Remoto · Travel / airline tech",
-            "role": "Software QA Engineer II", "company": "FLYR Labs",
+            "role": "Quality Engineer II | QA Automation Engineer", "company": "FLYR Labs",
             "points": [
                 "Diseñé un framework escalable de Selenium + pytest con Page Object Model que subió la cobertura de regresión automatizada un 60%, hasta el 75% de los flujos críticos de reserva y pricing.",
                 "Reduje el ciclo de regresión un 60% (de 1h a 24 min) parametrizando y paralelizando las suites de pytest, acelerando la cadencia de releases.",
@@ -281,7 +287,7 @@ JOBS = {
         },
         {
             "current": False, "dates": "Oct 2022 — Feb 2024", "place": "Remoto",
-            "role": "QA Analyst", "company": "Netactica",
+            "role": "QA Engineer (manual y automatización)", "company": "Netactica",
             "points": [
                 "Ejecuté casos de prueba manuales y los primeros automatizados para aplicaciones web y API, y aporté al diseño de casos y a los primeros esfuerzos de automatización del equipo.",
                 "Bajé un 18% la fuga de defectos reforzando la validación y la trazabilidad en todo el STLC.",
@@ -313,7 +319,7 @@ JOBS = {
     "en": [
         {
             "current": True, "dates": "Feb 2024 — present", "place": "Remote · Travel / airline tech",
-            "role": "Software QA Engineer II", "company": "FLYR Labs",
+            "role": "Quality Engineer II | QA Automation Engineer", "company": "FLYR Labs",
             "points": [
                 "Increased automated regression coverage by 60%, reaching 75% of critical booking/pricing flows, by architecting a scalable Selenium + pytest framework with the Page Object Model.",
                 "Cut regression cycle time by 60% (from 1h to 24 min) by parametrizing and parallelizing pytest suites, accelerating release cadence.",
@@ -325,7 +331,7 @@ JOBS = {
         },
         {
             "current": False, "dates": "Oct 2022 — Feb 2024", "place": "Remote",
-            "role": "QA Analyst", "company": "Netactica",
+            "role": "QA Engineer (Manual & Automation)", "company": "Netactica",
             "points": [
                 "Executed manual and early automated test cases for web and API applications, contributing to test case design and the team’s first automation efforts.",
                 "Reduced defect leakage by 18% by strengthening validation processes and traceability across the STLC.",
