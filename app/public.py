@@ -10,13 +10,9 @@ public_bp = Blueprint("public", __name__)
 PROJECT_TAGS = {4: "UI", 5: "API", 6: "CI/CD", 7: "BDD"}
 
 
-def _cv_url(lang: str):
-    """URL del CV del idioma pedido, o None si todavía no se subió el PDF.
-
-    El CV no se versiona hasta tener una versión pública (sin teléfono): el
-    botón de descarga solo aparece cuando existe el archivo en static/cv/.
-    """
-    name = f"cv/CV_Andres_Gonzalez_{lang}.pdf"
+def _cv_url():
+    """URL del CV público (sin teléfono), o None si el PDF no está en static/cv/."""
+    name = "cv/CV_Andres_Gonzalez.pdf"
     if (Path(current_app.static_folder) / name).is_file():
         return f"/static/{name}"
     return None
@@ -52,7 +48,7 @@ def _render(page: str, lang: str, template: str, **extra):
         lang_urls={lang: content.PAGES[page][lang], other: content.PAGES[page][other]},
         alternates=content.PAGES[page],
         links={"linkedin": content.LINKEDIN, "github": content.GITHUB, "repo": content.REPO, "email": content.EMAIL},
-        cv_url=_cv_url(lang),
+        cv_url=_cv_url(),
         **extra,
     )
 
