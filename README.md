@@ -125,6 +125,36 @@ Cada push a `main` (salvo cambios solo en `.md`) dispara [`.github/workflows/dep
 bash ~/qa-portfolio-server/deploy/deploy.sh
 ```
 
+## Lectura de logs desde Claude (solo lectura)
+
+Para que Claude pueda analizar el servidor (errores de la app, Nginx, renovación de certificados) sin darle acceso de escritura, hay una **segunda clave SSH, distinta de la de deploy**, atada a [`deploy/logs.sh`](deploy/logs.sh) con un forced command en `authorized_keys`:
+
+```
+command="bash /home/ubuntu/qa-portfolio-server/deploy/logs.sh",restrict ssh-ed25519 AAAA... claude-logs-readonly
+```
+
+Cómo funciona la restricción: con esa clave no se obtiene una shell. El servidor ignora el comando que pida el cliente y ejecuta siempre `logs.sh`, que recibe lo pedido como **texto** en `$SSH_ORIGINAL_COMMAND` y lo valida contra una lista cerrada:
+
+| Comando | Qué ejecuta |
+|---|---|
+| `help` | lista los comandos |
+| `status` | `docker compose ps`, `uptime`, `df -h /`, `free -h` |
+| `app [N]` / `certbot [N]` | `docker compose logs --tail N <servicio>` |
+| `nginx [N]` | igual, con el último octeto de cada IPv4 enmascarado (las IPs de visitantes son datos personales) |
+| `unit [N]` | `journalctl -u qa-portfolio.service -n N` |
+
+`N` es un entero de 1 a 500 (por defecto 200). Cualquier otra cosa se rechaza con exit 2: no hay rutas, opciones ni encadenado posible. Los logs de PostgreSQL **no se exponen a propósito**, porque pueden incluir datos de consultas.
+
+Verificado antes de desplegar con 13 intentos hostiles (`app; id`, `app $(id)`, `cat /etc/passwd`, `app 9999`, `postgres`, etc.): todos rechazados.
+
+```bash
+# Ejemplos, desde la PC (clave de solo lectura, nunca la de deploy)
+ssh -i ~/.ssh/qa_portfolio_logs ubuntu@<IP> status
+ssh -i ~/.ssh/qa_portfolio_logs ubuntu@<IP> app 100
+```
+
+Limitación conocida: el usuario `ubuntu` pertenece al grupo `docker`, lo que equivale a privilegios de root en esa máquina. La seguridad de esta clave **depende por completo de que `logs.sh` no pueda ser manipulado** por quien la use (por eso es de solo lectura sobre el repositorio y no acepta argumentos libres) y de que nadie con acceso de escritura a `main` lo modifique sin revisión.
+
 ## Notas de troubleshooting
 
 **El plugin `docker compose` puede no verse para `root`/`systemd` aunque funcione para tu usuario.** Si `docker compose version` funciona como `ubuntu` pero `sudo docker compose version` dice `'compose' is not a docker command`, es porque el plugin quedó instalado solo en `~/.docker/cli-plugins/docker-compose` (instalación por-usuario). Solución: copiarlo a una ruta de plugins a nivel de sistema, por ejemplo:

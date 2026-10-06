@@ -107,7 +107,39 @@ Todos los pendientes de la semana 10 están cerrados:
 - [x] Routine nocturna: analiza fallos de CI, identifica flaky tests, notifica Slack — **hecho 2026-09-29**, `trig_018RKk64jV8zHmsMQtNvq1ZB`, corre 11pm hora Bogotá, canal `#ci-alerts`.
 - [x] Review automático de PRs con checklist QA — **hecho 2026-09-30**, `trig_0142zKmhVNHWazPjBgrVPpfi`, vía **cron horario** (`33 * * * *`) en vez del webhook (que nunca disparó). Verificado con un PR real (#2): comentó con la herramienta MCP de GitHub y detectó las violaciones plantadas. Ver sección 4.
 - [x] Deploy automático del `qa-portfolio-server` — **hecho 2026-09-30**: GitHub Actions + clave SSH dedicada con forced command (no una Routine). Primera corrida manual en verde (deploy + smoke test en 6s). Ver sección 4.
-- [ ] (Opcional) Confirmar el disparo por `push` real con el próximo cambio que no sea solo `.md` — hasta ahora solo se probó el disparo manual (`workflow_dispatch`).
+- [x] Confirmar el disparo por `push` real — **hecho 2026-10-01**: 5 deploys seguidos en verde disparados por los merges de los PRs #3 a #7 (rediseño del sitio), sin intervención manual.
+
+---
+
+## 3e. BACKLOG DEL SITIO WEB (rediseño del 2026-10-01 — revisado 2026-10-06)
+
+Cosas a ajustar, notar o mejorar a medida que avancen las semanas que quedan. Revisión hecha leyendo el código y el sitio en producción (`andresqe.duckdns.org`): todo funciona; esto es lo que quedó pendiente, **no bugs**. Marcar con `[x]` y fecha al cerrar cada uno.
+
+### Contenido y credibilidad (antes del lanzamiento, semana 14)
+- [ ] **Verificar que cada cifra del sitio sea defendible en entrevista.** Los KPIs salen de la HV, no de este repo: ciclo de regresión 1h → 24m (−60%), 75% de flujos críticos cubiertos (+60% de regresión automatizada), −15% defectos en producción, 6+/4+ años. Un entrevistador puede preguntar el "cómo" de cada una; si alguna es estimada, decirlo en la web o suavizarla.
+- [ ] **Mantener `JOBS` en `app/content.py` sincronizado con el PDF del CV** (`app/static/cv/CV_Andres_Gonzalez.pdf`). Son dos copias de la misma información: si cambia una y no la otra, el sitio se contradice solo.
+- [ ] **Casos de estudio faltantes: API, CI/CD y BDD** (hoy dicen "pronto"; solo existe el de UI en `case_ui.html`). Candidato para generarlos con ayuda de Claude en semana 13, junto con la documentación avanzada.
+- [ ] **Sumar al portafolio lo de las semanas 8-12** (servidor propio, deploy automático, routines de CI y de review de PRs, flujos con MCP). Hoy la tabla de proyectos solo tiene las semanas 4-7; "Este sitio" cubre el deploy pero no las routines.
+
+### Comportamiento del sitio
+- [ ] **Los badges "passing" de los 4 proyectos son texto fijo**, no leen el estado real del CI. Si el CI se pone rojo, el sitio seguiría diciendo "passing". Arreglo: leer el estado del último run por la API de GitHub desde el backend, con caché de unos minutos para no pasar el límite de la API. Encaja bien para semana 12 (ya hay contexto de CI) o 14.
+- [ ] **Demos IA (semana 13):** hoy es un placeholder "Próximamente". Definir dónde viven los endpoints y cómo se presentan en el diseño nuevo (el estilo dashboard ya reserva el lugar).
+- [ ] **Rate limiting (semana 14)** antes de abrir los demos al público: cada llamada a la API de Claude cuesta plata.
+- [ ] **El panel admin conserva el estilo viejo** (`base.html` + `style.css`); el sitio público usa `site.css` y `site/layout.html`. Funciona, pero visualmente son dos productos distintos. Unificar solo si sobra tiempo: lo ve únicamente Andres.
+
+### Privacidad y spam
+- [ ] **Correo en texto plano** (`EMAIL` en `app/content.py`, expuesto en los `mailto:`). Los robots que rastrean sitios lo recogen. Opciones: dejarlo (es el costo de ser contactable), ofuscarlo con JS, o usar un formulario de contacto. Decidir antes del lanzamiento.
+- [ ] El CV público ya no lleva teléfono; **confirmar que cualquier CV nuevo que se suba también lo omita** (el PDF vive en un repo público).
+
+### Calidad técnica (semana 14, "validación del portafolio")
+- [ ] Pasada de **Lighthouse** (rendimiento, accesibilidad, SEO) y de **móvil real**; verificar si ya existen metaetiquetas Open Graph (vista previa al compartir en LinkedIn) y `sitemap.xml`/`robots.txt` — no se confirmó.
+- [ ] Probar el sitio con el prompt de "recruiter senior QA" del plan, ya con el contenido final.
+- [ ] Backup automático de PostgreSQL (cron diario) y snapshot semanal de Oracle (semana 14 del plan).
+
+### Opcionales de infraestructura heredados
+- [ ] Reinicio real del servidor para validar el systemd unit.
+- [ ] Flask-Migrate/Alembic (hoy `db.create_all()`).
+- [ ] Instalar el plugin buildx de Docker (aviso inofensivo en cada deploy).
 
 ---
 
