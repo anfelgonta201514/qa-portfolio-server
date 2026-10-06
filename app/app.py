@@ -52,6 +52,11 @@ def create_app():
     with app.app_context():
         db.create_all()
 
+    # Calienta el estado del CI en segundo plano al arrancar, para que el primer
+    # visitante después de un deploy no vea "sin datos" (ver ci_status.py).
+    import ci_status
+    ci_status.get_status()
+
     return app
 
 

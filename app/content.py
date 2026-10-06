@@ -85,6 +85,12 @@ T = {
         "cta_title": "¿Tu equipo necesita más confianza en cada release?",
         "cta_text": "Manizales, Colombia · remoto · español nativo, inglés B2",
         "write": "Escríbeme",
+        # badge del estado real del CI (ci_status.py)
+        "ci_passing": "passing",
+        "ci_failing": "failing",
+        "ci_unknown": "sin datos",
+        "ci_tooltip": "Último run de CI en master: {sha} · {date}",
+        "ci_tooltip_none": "Todavía no se pudo leer el estado del CI desde GitHub",
         # experiencia
         "exp_h1_a": "6+ años entregando software, ",
         "exp_h1_b": "4+ automatizando",
@@ -192,6 +198,12 @@ T = {
         "cta_title": "Does your team need more confidence in every release?",
         "cta_text": "Manizales, Colombia · remote · native Spanish, B2 English",
         "write": "Email me",
+        # live CI status badge (ci_status.py)
+        "ci_passing": "passing",
+        "ci_failing": "failing",
+        "ci_unknown": "no data",
+        "ci_tooltip": "Latest CI run on master: {sha} · {date}",
+        "ci_tooltip_none": "The CI status could not be read from GitHub yet",
         "exp_h1_a": "6+ years shipping software, ",
         "exp_h1_b": "4+ automating",
         "exp_h1_c": " its quality.",

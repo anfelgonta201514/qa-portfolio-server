@@ -1,0 +1,6 @@
+{# Badge del estado REAL del CI. state: passing | failing | unknown.
+   No es un enlace a propósito: en la home vive dentro de una tarjeta que ya es un <a>
+   y un <a> dentro de otro <a> es HTML inválido. El detalle va en el tooltip. #}
+{% macro ci_badge(state, ci, t, prefix="", extra_class="") -%}
+<span class="mono ci-badge ci-{{ state }} {{ extra_class }}" title="{{ t.ci_tooltip.format(sha=ci.sha, date=(ci.finished or '')[:10]) if ci.sha else t.ci_tooltip_none }}">● {{ prefix }}{{ t["ci_" ~ state] }}</span>
+{%- endmacro %}

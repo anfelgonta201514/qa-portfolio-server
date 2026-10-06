@@ -122,7 +122,7 @@ Cosas a ajustar, notar o mejorar a medida que avancen las semanas que quedan. Re
 - [ ] **Sumar al portafolio lo de las semanas 8-12** (servidor propio, deploy automático, routines de CI y de review de PRs, flujos con MCP). Hoy la tabla de proyectos solo tiene las semanas 4-7; "Este sitio" cubre el deploy pero no las routines.
 
 ### Comportamiento del sitio
-- [ ] **Los badges "passing" de los 4 proyectos son texto fijo**, no leen el estado real del CI. Si el CI se pone rojo, el sitio seguiría diciendo "passing". Arreglo: leer el estado del último run por la API de GitHub desde el backend, con caché de unos minutos para no pasar el límite de la API. Encaja bien para semana 12 (ya hay contexto de CI) o 14.
+- [x] **Los badges "passing" eran texto fijo** — **hecho 2026-10-06 (QAP-8), pendiente de commit/deploy**: ahora leen el estado real del CI (`app/ci_status.py`). Ver la entrada del 2026-10-06 en la sección 4 y la sección "Badges con el estado real del CI" del README.
 - [ ] **Demos IA (semana 13):** hoy es un placeholder "Próximamente". Definir dónde viven los endpoints y cómo se presentan en el diseño nuevo (el estilo dashboard ya reserva el lugar).
 - [ ] **Rate limiting (semana 14)** antes de abrir los demos al público: cada llamada a la API de Claude cuesta plata.
 - [ ] **El panel admin conserva el estilo viejo** (`base.html` + `style.css`); el sitio público usa `site.css` y `site/layout.html`. Funciona, pero visualmente son dos productos distintos. Unificar solo si sobra tiempo: lo ve únicamente Andres.
@@ -329,4 +329,39 @@ Detalle menor observado: `docker compose` avisa "requires buildx plugin". Usa el
 
 **Con esto, la semana 11 queda cerrada:** routine nocturna de CI, review de PRs (cron) y deploy automático (GitHub Actions). Lo único pendiente es opcional: ver el disparo por `push` real con el próximo cambio de código.
 
-**Siguiente paso recomendado:** semana 12 del plan (Cowork/MCP), o antes, si Andres quiere, los opcionales (reinicio real del servidor para validar systemd, Flask-Migrate, buildx).
+*(Histórico: el siguiente paso de aquí, la semana 12, se desarrolla en la entrada siguiente.)*
+
+---
+
+**2026-10-06 — Semana 12: Jira + MCP, flujo falla → Jira → Slack, reporte de sprint y logs del servidor.**
+
+Estado del trabajo (rastreado en Jira, proyecto **QA Portfolio / `QAP`**, sitio `andresfelgonta.atlassian.net`):
+
+1. **Jira y conector.** Sitio Jira gratis, proyecto Kanban con clave `QAP` (la clave original `KAN` quedó como alias). Se agregó el tipo de ticket **Bug**, que no venía. Conector oficial de Atlassian conectado y verificado con lecturas antes de escribir nada.
+2. **Flujo falla → análisis → Jira → Slack, verificado de punta a punta.** Se provocó una falla real de Playwright con un test temporal (borrado después, nunca commiteado), Claude analizó el aria snapshot, creó el Bug `QAP-1` y avisó a `#ci-alerts`. El ticket y el mensaje van marcados "PRUEBA DEL FLUJO". **Hallazgo real que salió de ahí:** la app SÍ muestra `alert: Invalid credentials`, contrario a lo que decía `test_admin_negative.py` → ticket `QAP-7`. Limitación: el conector no sube adjuntos (traza/captura), solo texto.
+3. **Reporte de sprint** en `docs/reporte-qe-semana-12.md`, con cifras leídas de Jira. **Limitación documentada en el propio reporte:** el tablero es Kanban (sin sprints) y los 10 tickets se crearon el mismo día, así que no hay velocidad ni tiempos de ciclo; el 40 % de avance describe el tablero, no un ritmo medido.
+4. **Logs del servidor con acceso de solo lectura (QAP-10).** Segunda clave SSH `qa_portfolio_logs`, separada de la de deploy, registrada con `command="bash /home/ubuntu/qa-portfolio-server/deploy/logs.sh",restrict`. `deploy/logs.sh` solo acepta 6 comandos (`help|status|app|nginx|certbot|unit` con `N` de 1 a 500), enmascara el último octeto de las IPs en Nginx y no expone los logs de PostgreSQL. Antes de desplegarlo se probó con 13 intentos hostiles y, ya en el servidor, con `whoami`, `cat /etc/passwd`, `app; id`, `postgres`, `bash -i` y pedir terminal: todo rechazado. **Límite conocido** (ver README): el usuario `ubuntu` está en el grupo `docker` (= root); la seguridad de la clave depende de que `logs.sh` no se pueda manipular.
+5. **Resultado del análisis de logs:** servidor sano. 0 respuestas 5xx en 500 registros de Nginx, certificado válido hasta 2026-12-28 con 14 rondas de renovación sin fallos, 90 días encendido, 3 % de disco. El 44 % del tráfico (218 de 500) son escáneres (`.env`, `.git`, PHPUnit `eval-stdin.php`, path traversal); ninguna petición sospechosa recibió 200. Un solo bloque de IPs genera el 59 % del total. Comentario completo en `QAP-10`.
+
+**Pendientes que salieron del análisis (no son bugs, son mejoras):**
+- [ ] **Rate limiting en `/admin/login`** (hoy sin límite de intentos; semana 14, junto al de los demos de IA).
+- [ ] **Activar el access log de Gunicorn** (hoy solo hay 4 líneas de log de la app; la visibilidad de peticiones depende por completo de Nginx).
+- [ ] **Reinicio real del servidor** para validar el systemd unit: el uptime es de 90 días y el único arranque registrado en el journal (2026-09-29) falló una vez antes de arreglarse. Sigue sin haber evidencia de arranque en frío.
+- [ ] `logs.sh` ve como máximo 500 líneas (~2 h 45 min de tráfico): sirve para diagnosticar, no para tendencias. Para tendencias haría falta persistir logs en otro lado.
+
+**Estado del tablero Jira:** Done `QAP-2..5`; In Review `QAP-1` (Bug de prueba), `QAP-6` (reporte) y `QAP-10` (logs); To Do `QAP-7` (reforzar test negativo), `QAP-8` (badges de CI estáticos), `QAP-9` (casos de estudio faltantes). Andres decide cuándo pasar los tickets en revisión a Done.
+
+**Pieza que NO se hizo de la semana 12:** el plan menciona "Claude Desktop con conectores activos / Cowork" y esta semana se trabajó desde Claude Code, que usa los mismos conectores. Gmail no se conectó (no hace falta para ninguno de los flujos probados).
+
+**2026-10-06 (misma sesión) — QAP-7 y QAP-8 cerrados antes de la semana 13.**
+
+**QAP-7 (repo `qa-automation-portfolio`, sin commitear):** el test negativo de login asumía que la app no mostraba error; era falso (ver el `CONTEXT.md` de ese repo, sección 8). Se verificó contra la app real y se encontraron dos trampas (dos `role="alert"` en la página, y el mensaje tarda hasta ~5 s), además de que los asserts `to_be_hidden` del test viejo pasaban al instante sin comprobar nada. Test corregido y validado con 3 corridas y una prueba de mutación.
+
+**QAP-8 (este repo, sin commitear):** los badges "passing" ahora leen el estado real del CI.
+- **`app/ci_status.py`**: lee el último run completado de `tests.yml` en `master` por la API pública de GitHub (solo `urllib`, sin dependencias nuevas), en un hilo aparte, con caché de 5 min. Mapeo: API → job `API tests`; UI → los 3 jobs de UI; BDD → step `BDD - admin room`; CI/CD → run completo.
+- **Principio: nunca miente por omisión.** Sin respuesta de GitHub, con jobs que no aparecen o con un dato de más de 6 h, el badge dice "sin datos" / "no data", jamás "passing". Un run cancelado no cuenta como fallo.
+- **Verificado:** 13 pruebas unitarias, 2 mutaciones que detectan el bug más grave (mostrar "passing" sin datos, y mostrar un dato demasiado viejo), lectura contra la API real de GitHub (4 en `passing`, run `2dcfaec`), y render de la app Flask real con SQLite en tres escenarios: datos reales (ES y EN), fallo simulado, y sin datos. Ya no queda ningún `● passing` fijo en el HTML. **No se verificó visualmente el color de los badges** (el CSS son 4 líneas con una variable existente más `#f87171` para el rojo).
+- **Limitación conocida (documentada en README):** los steps `continue-on-error` figuran como `success` en la API aunque fallen, así que "passing" significa "pasaron los steps bloqueantes".
+- **Pendiente tras el deploy:** confirmar en el sitio real (`andresqe.duckdns.org`) que los badges salen con datos reales. El primer visitante debería ver ya el estado (calentamiento al arrancar).
+
+**Siguiente paso recomendado:** semana 13 (documentación avanzada + demos de IA en vivo). Decidir qué hacer con el rate limiting antes de abrir los demos al público, porque van a llamar a la API de Claude (cuestan plata) y eso hace más urgente protegerlos.

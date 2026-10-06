@@ -1,4 +1,5 @@
 {% extends "site/layout.html" %}
+{% from "site/_ci_badge.html" import ci_badge %}
 
 {% block title %}{{ t.case_ui_short }} · {{ t.html_title }}{% endblock %}
 {% block crumbs %}<a href="{{ urls.overview }}">portfolio</a> / {{ t.crumb_projects }} / <span>ui-playwright</span>{% endblock %}
@@ -7,7 +8,7 @@
 <section class="card hero-case">
   <div class="row-start">
     <span class="pill">{{ t.case_tag }}</span>
-    <span class="mono passing small">● CI passing</span>
+    {{ ci_badge(ci_state, ci, t, prefix="CI ", extra_class="small") }}
   </div>
   <h1 class="h1-md">{{ t.case_h1 }}</h1>
   <p class="lead">{{ t.case_lead }}</p>

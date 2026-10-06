@@ -1,5 +1,6 @@
 {% extends "site/layout.html" %}
 {% from "site/_icons.html" import brand %}
+{% from "site/_ci_badge.html" import ci_badge %}
 
 {% block content %}
 <section class="card hero">
@@ -60,7 +61,7 @@
     <a class="card project-card" href="{{ p.case_url or p.repo_url or links.repo }}"{% if not p.case_url %} target="_blank" rel="noopener noreferrer"{% endif %}>
       <span class="row-between">
         <span class="pill">{{ p.tag }}</span>
-        <span class="mono passing">● passing</span>
+        {{ ci_badge(p.ci, ci, t) }}
       </span>
       <span class="project-title">{{ p.title }}</span>
       <span class="project-desc">{{ p.description }}</span>

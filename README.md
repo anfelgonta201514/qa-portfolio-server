@@ -125,6 +125,34 @@ Cada push a `main` (salvo cambios solo en `.md`) dispara [`.github/workflows/dep
 bash ~/qa-portfolio-server/deploy/deploy.sh
 ```
 
+## Badges con el estado real del CI
+
+Los badges de cada proyecto (y el "CI passing" del caso de estudio) **no son texto fijo**: [`app/ci_status.py`](app/ci_status.py) lee el último run completado de `tests.yml` en `master` de `qa-automation-portfolio` desde la API pública de GitHub. Si el CI se pone rojo, el sitio lo muestra.
+
+| Badge | Sale de |
+|---|---|
+| API | job `API tests` |
+| UI | los 3 jobs `UI tests (chromium / firefox / webkit)` |
+| BDD | step bloqueante `Run UI tests (BDD - admin room)` de los jobs de UI |
+| CI/CD | resultado del run completo |
+
+Estados: `passing` (verde) · `failing` (rojo) · `sin datos` / `no data` (gris).
+
+**Decisiones de diseño:**
+- **Nunca miente por omisión.** Si GitHub no responde, si cambian los nombres de los jobs, o si el último dato tiene más de 6 h, el badge dice "sin datos", jamás "passing". Un run **cancelado** tampoco cuenta como fallo.
+- **No frena la página.** La lectura corre en un hilo aparte, con caché de 5 min; las páginas responden siempre con lo que haya en memoria. Se calienta al arrancar para que el primer visitante tras un deploy no vea "sin datos".
+- **Respeta el límite de la API** sin autenticar (60 peticiones/hora por IP): 2 peticiones por refresco = máximo 24/hora. Tras un error espera 60 s antes de reintentar. Si un error ocurre con un dato bueno en caché, se conserva ese último dato (hasta las 6 h).
+- **Solo librería estándar** (`urllib`): no agrega dependencias a la imagen Docker.
+- El badge no es un enlace: en la home vive dentro de una tarjeta que ya es un `<a>`, y un `<a>` dentro de otro es HTML inválido. El detalle (commit y fecha del run) va en el tooltip.
+
+**Limitación conocida:** los steps con `continue-on-error: true` (booking flow y BDD booking, ver `CLAUDE.md` de `qa-automation-portfolio`) figuran como `success` en la API aunque fallen, así que su fallo **no** se refleja en los badges. Es coherente con la regla del repo de que ese fallo en CI es esperado, pero hay que saberlo: "passing" aquí significa "pasaron los steps bloqueantes".
+
+**Pruebas** (sin red ni base de datos; GitHub se simula):
+```bash
+python -m pytest app/tests -q
+```
+Cubren la lógica de estado (todo verde, un job rojo, un navegador rojo, run cancelado, jobs que faltan) y el comportamiento ante fallos (GitHub caído, dato viejo, error con dato bueno en caché). Se comprobó además con mutaciones que detectan el bug más grave, mostrar "passing" cuando no hay datos. Variable `CI_STATUS_DISABLED=1` apaga la lectura (los badges salen en "sin datos").
+
 ## Lectura de logs desde Claude (solo lectura)
 
 Para que Claude pueda analizar el servidor (errores de la app, Nginx, renovación de certificados) sin darle acceso de escritura, hay una **segunda clave SSH, distinta de la de deploy**, atada a [`deploy/logs.sh`](deploy/logs.sh) con un forced command en `authorized_keys`:

@@ -44,7 +44,11 @@ ul { margin: 0; padding: 0; list-style: none; }
 .small { font-size: 13px; }
 .strong { font-weight: 700; }
 .accent { color: var(--accent); }
-.passing { color: var(--ok); font-size: 12px; }
+/* Badge del estado real del CI (ver ci_status.py): verde / rojo / gris */
+.ci-badge { font-size: 12px; }
+.ci-passing { color: var(--ok); }
+.ci-failing { color: #f87171; }
+.ci-unknown { color: var(--muted); }
 
 /* ---------- layout */
 .shell {
