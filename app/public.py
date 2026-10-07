@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, render_template, send_from_directory
 
 import ci_status
 import content
+import demo_content
 from models import Project
 
 public_bp = Blueprint("public", __name__)
@@ -85,12 +86,22 @@ def _case_ui(lang):
     )
 
 
+def _demos(lang):
+    return _render(
+        "demos", lang, "site/demos.html",
+        d=demo_content.UI[lang],
+        model=demo_content.MODEL,
+        order=demo_content.DEMO_ORDER,
+        examples={key: demo_content.EXAMPLES[key][lang] for key in demo_content.DEMO_ORDER},
+    )
+
+
 @public_bp.get("/favicon.ico")
 def favicon():
     return send_from_directory(Path(current_app.static_folder) / "img", "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
-VIEWS = {"overview": _overview, "experience": _experience, "case_ui": _case_ui}
+VIEWS = {"overview": _overview, "experience": _experience, "case_ui": _case_ui, "demos": _demos}
 
 # Una regla por página e idioma (ej. /experiencia y /en/experience), con
 # endpoints public.<página>_<idioma>.

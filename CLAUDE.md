@@ -9,7 +9,7 @@ Instrucciones permanentes para trabajar en este repo. Arquitectura estable, conv
 
 ## Descripción del proyecto
 
-Servidor y portafolio web personal de Andres Gonzalez (QE en FLYR), semanas 8-14 de un plan de estudio de 14 semanas más amplio (Claude IA + QE Automation). Continúa a [`qa-automation-portfolio`](../qa-automation-portfolio) (semanas 4-7, repo separado): ese repo demuestra el stack de testing (UI+API+CI+Docker+BDD); este proyecto aloja el sitio web que presenta todo eso, con backend propio, panel admin y demos de IA en vivo.
+Servidor y portafolio web personal de Andres Gonzalez (QE en FLYR), semanas 8-14 de un plan de estudio de 14 semanas más amplio (Claude IA + QE Automation). Continúa a [`qa-automation-portfolio`](../qa-automation-portfolio) (semanas 4-7, repo separado): ese repo demuestra el stack de testing (UI+API+CI+Docker+BDD); este proyecto aloja el sitio web que presenta todo eso, con backend propio, panel admin y demos de IA aplicada a QA (multi-proveedor — ver "Enfoque de IA del portafolio" más abajo).
 
 Corre sobre una instancia **Oracle Cloud Always Free** (Ubuntu 20.04 LTS, ARM/aarch64, 4 cores, 24GB RAM, 200GB — de los cuales ~191GB libres) que Andres ya tenía provisionada (usada antes para un servidor de Palworld, completamente dado de baja y libre para este proyecto).
 
@@ -70,8 +70,22 @@ Dos "routines" (agentes de Claude Code programados en la nube, independientes de
 3. **Cualquier cambio de firewall (Security List de Oracle o iptables local) se avisa y confirma antes de aplicarse** — es un servidor real, un error de firewall puede cortar el propio acceso SSH. Antes de tocar reglas, siempre `sudo iptables -L -n -v` o revisar la Security List actual primero (no asumir el estado).
 4. **Nunca mezclar nada del entorno de trabajo privado de Andres (SunExpress UAT / FLYR)** en este repo, igual que en `qa-automation-portfolio`.
 5. **Claude no hace `git commit`/`git push` ni ejecuta comandos con efecto real en el servidor (cambios de firewall, instalar paquetes, levantar/bajar contenedores) sin que Andres lo confirme explícitamente para ese caso puntual.** Los comandos de solo lectura (verificar estado, `docker ps`, `iptables -L`, etc.) no necesitan confirmación previa.
-6. **`docker-compose.yml` y cualquier archivo de config versionado nunca lleva secretos en texto plano** (contraseñas de Postgres, `ANTHROPIC_API_KEY`, `SECRET_KEY` de Flask, credenciales de admin) — van en variables de entorno cargadas desde un `.env` gitignorado en el servidor, nunca committeadas. El repo es público: el código puede verse, los secretos nunca.
+6. **`docker-compose.yml` y cualquier archivo de config versionado nunca lleva secretos en texto plano** (contraseñas de Postgres, claves de API de los proveedores de IA, `SECRET_KEY` de Flask, credenciales de admin) — van en variables de entorno cargadas desde un `.env` gitignorado en el servidor, nunca committeadas. El repo es público: el código puede verse, los secretos nunca.
 7. **Los commits de este repo NO llevan trailer `Co-Authored-By: Claude`** — mismo motivo y mismo criterio que `qa-automation-portfolio` (repo hermano del mismo portafolio público): el autor real es Andres, la línea solo generaba confusión en el listado de Contributors de GitHub.
+
+---
+
+## Enfoque de IA del portafolio (decisión de Andres, 2026-10-07)
+
+El portafolio se enfoca en el **uso de IA aplicada a QA, no en una sola marca de IA**: Andres usa Claude para unas tareas y otras herramientas para otras, y eso es lo que el sitio debe mostrar. El nombre del plan de estudio ("Claude IA + QE Automation") se conserva tal cual, pero el producto público no se "casa" con un proveedor.
+
+Reglas que se derivan de eso (no negociables sin hablarlo con Andres):
+1. **Cada demo declara con verdad qué modelo/proveedor lo genera.** Nunca se muestra uno como si fuera otro.
+2. **Un ejemplo pregenerado nunca se presenta como "en vivo".** Si la respuesta no se generó en ese momento para la entrada del visitante, el sitio lo dice ("ejemplo real generado con ...").
+3. **Proveedor intercambiable:** el backend llama a la IA a través de una capa mínima (interfaz común), de modo que cambiar de proveedor o de modelo sea configuración (variables del `.env`), no reescribir demos.
+4. **Los planes gratuitos tienen límites y condiciones que cambian** (cuotas por minuto/día, y algunos usan los datos de entrada para mejorar sus modelos). Antes de elegir un proveedor se verifican **sus páginas oficiales**, no blogs comparativos. Cada demo con un proveedor externo lleva aviso de "no pegues datos reales ni confidenciales".
+5. **Los demos nunca dependen de que el proveedor responda:** si falla o se agota la cuota, se muestra el ejemplo pregenerado (etiquetado), no un error. Aun siendo gratis, hay límite por visitante para que una sola persona no agote la cuota diaria.
+6. **Todo texto del sitio, README y documentación evita decir "Claude API" como si fuera el único motor** del portafolio. (Lo que sí es de Claude se dice explícito: p. ej. las routines de Claude Code o los ejemplos generados con Claude.)
 
 ---
 

@@ -51,7 +51,7 @@ qa-portfolio-server/
 
 ✅ **Portafolio completo funcionando end-to-end, con HTTPS real**: frontend público en `https://andresqe.duckdns.org` consumiendo `GET /api/projects` (4 entradas reales de `qa-automation-portfolio`, una por semana 4-7), panel admin (`/admin`) con login real (Flask-Login + contraseña hasheada), CRUD completo de proyectos protegido por sesión, CSRF en los formularios. Certificado de Let's Encrypt con renovación automática verificada. Las dos capas de firewall abiertas y verificadas. systemd levanta todo el stack al boot. Deploy automático con GitHub Actions en cada push a `main` (SSH con clave restringida + smoke test post-deploy).
 
-Sección "Demos" en la home: **placeholder a propósito** ("Próximamente") — los demos interactivos reales con la API de Anthropic (generador de test cases, analizador de bugs, generador de suites de API) son contenido de la semana 13, no de la 10; acá solo se dejó el lugar reservado en el frontend.
+Sección "Demos" en la home: **placeholder a propósito** ("Próximamente") — los demos de IA aplicada a QA (generador de test cases, analizador de bugs, generador de suites de API) son contenido de la semana 13, no de la 10. Desde el 2026-10-07 el enfoque es **multi-proveedor**: el portafolio muestra el uso de IA en general, no de una sola marca, y cada demo indica qué modelo lo genera (ver "Enfoque de IA del portafolio" en `CLAUDE.md`).
 
 Pendiente: migraciones con Flask-Migrate/Alembic (hoy usa `db.create_all()`, suficiente mientras el schema sea trivial), demos de IA (semana 13).
 
@@ -147,11 +147,25 @@ Estados: `passing` (verde) · `failing` (rojo) · `sin datos` / `no data` (gris)
 
 **Limitación conocida:** los steps con `continue-on-error: true` (booking flow y BDD booking, ver `CLAUDE.md` de `qa-automation-portfolio`) figuran como `success` en la API aunque fallen, así que su fallo **no** se refleja en los badges. Es coherente con la regla del repo de que ese fallo en CI es esperado, pero hay que saberlo: "passing" aquí significa "pasaron los steps bloqueantes".
 
-**Pruebas** (sin red ni base de datos; GitHub se simula):
+**Pruebas** (sin red; GitHub se simula; base SQLite en memoria, ver `app/tests/conftest.py`):
 ```bash
 python -m pytest app/tests -q
 ```
 Cubren la lógica de estado (todo verde, un job rojo, un navegador rojo, run cancelado, jobs que faltan) y el comportamiento ante fallos (GitHub caído, dato viejo, error con dato bueno en caché). Se comprobó además con mutaciones que detectan el bug más grave, mostrar "passing" cuando no hay datos. Variable `CI_STATUS_DISABLED=1` apaga la lectura (los badges salen en "sin datos").
+
+## Demos de IA aplicada a QA
+
+Página `/demos` (`/en/demos`) con tres demos: **generador de casos de prueba** (desde una historia de usuario), **analizador de bugs** (desde una traza de error) y **generador de tests de API** (desde la especificación de un endpoint). Contenido en [`app/demo_content.py`](app/demo_content.py), plantilla en `app/templates/site/demos.html`.
+
+**Son ejemplos reales pregenerados, no resultados en vivo, y la página lo dice.** Cada respuesta la generó de verdad el modelo indicado en `MODEL` (hoy Claude Sonnet 5.5, en una sesión de Claude Code, el 2026-10-07). No hay ningún cuadro de entrada libre, porque insinuaría que lo que se escribe se procesa en el momento. Es una decisión consciente del enfoque de IA del portafolio (ver `CLAUDE.md`): costo cero, cero riesgo de abuso, y un respaldo permanente para cuando exista un modo en vivo.
+
+**Garantías verificadas:**
+- **El código de los tests de API se ejecutó contra la API real antes de publicarlo**: `3 passed` y `4 passed, 1 xfailed`, el resultado que declara cada ejemplo (`run`). Los comportamientos raros salieron de probar la API de verdad: un payload sin `firstname` responde 500 (no 400), y un `totalprice` no numérico se acepta y se guarda como `null` (por eso ese test es `xfail(strict=True)`). Para repetir esa comprobación: `python -m pytest app/tests -q -m network` (necesita red; no corre por defecto).
+- **Dos ejemplos de bugs son casos reales de este proyecto** (el test de login con contraseña incorrecta y el choque entre los plugins de Allure), marcados como tales en la página.
+- **Se probó con mutaciones que las pruebas detectan los fallos de honestidad**: que la página diga "en vivo", que aparezca un cuadro de entrada, y que se desactive el escape de HTML.
+- Verificado en el navegador, en español e inglés, y en móvil (375 px) sin desbordamiento horizontal.
+
+**Limitaciones:** el visitante no puede probar su propia entrada. Los textos de los ejemplos de casos de prueba salen de los criterios de aceptación de la historia, no de comprobar la aplicación real (solo los de API se ejecutaron). El modo en vivo, con proveedor intercambiable y límites por visitante, es el siguiente paso.
 
 ## Lectura de logs desde Claude (solo lectura)
 

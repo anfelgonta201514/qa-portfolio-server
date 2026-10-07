@@ -1,0 +1,95 @@
+{% extends "site/layout.html" %}
+
+{% block title %}{{ d.title }} · {{ t.html_title }}{% endblock %}
+{% block crumbs %}<a href="{{ urls.overview }}">portfolio</a> / <span>{{ d.crumb }}</span>{% endblock %}
+
+{% block content %}
+<section class="card hero-case">
+  <span class="pill">{{ d.eyebrow }}</span>
+  <h1 class="h1-md">{{ d.h1 }}</h1>
+  <p class="lead">{{ d.lead }}</p>
+</section>
+
+{# Aviso permanente: estos NO son resultados en vivo (regla del proyecto, ver CLAUDE.md). #}
+<aside class="card demo-notice" role="note">
+  <strong>{{ d.notice_title }}</strong>
+  <p>{{ d.notice_text.format(provider=model.provider, model=model.name, date=model.date) }}</p>
+</aside>
+
+{% for key in order %}
+<section class="card section demo" id="demo-{{ key }}">
+  <div class="demo-head">
+    <p class="eyebrow">{{ loop.index }} / {{ order | length }}</p>
+    <h2>{{ d.demos[key].name }}</h2>
+    <p class="body">{{ d.demos[key].what }}</p>
+  </div>
+
+  {% for ex in examples[key] %}
+  <details class="example"{% if loop.first %} open{% endif %}>
+    <summary>
+      <span class="example-title">{{ ex.title }}</span>
+      <span class="mono small muted">{{ d.generated_with.format(model=model.name) }}</span>
+      {% if ex.real_case %}<span class="pill">{{ d.real_case }}</span>{% endif %}
+      {% if ex.run %}<span class="pill ok">{{ d.executed }} · {{ ex.run }}</span>{% endif %}
+    </summary>
+
+    <div class="example-body">
+      <p class="eyebrow">{{ d.input_label }}</p>
+      <pre class="code"><code>{{ ex.input }}</code></pre>
+
+      <p class="eyebrow">{{ d.output_label }}</p>
+
+      {% if key == "testcases" %}
+      <div class="cases">
+        {% for c in ex.output.cases %}
+        <article class="card case">
+          <header>
+            <span class="mono accent">{{ c.id }}</span>
+            <span class="pill">{{ c.type }}</span>
+            <strong>{{ c.title }}</strong>
+          </header>
+          <p class="eyebrow">{{ d.steps }}</p>
+          <ol>{% for s in c.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+          <p class="eyebrow">{{ d.expected }}</p>
+          <p class="body">{{ c.expected }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      <div class="card-dashed section questions">
+        <p class="eyebrow">{{ d.questions_title }}</p>
+        <ul>{% for q in ex.output.questions %}<li>{{ q }}</li>{% endfor %}</ul>
+      </div>
+
+      {% elif key == "bugs" %}
+      <div class="card diagnosis">
+        <p class="eyebrow">{{ d.summary }}</p>
+        <p class="body">{{ ex.output.summary }}</p>
+        <p class="eyebrow">{{ d.cause }}</p>
+        <p class="body">{{ ex.output.cause }}</p>
+        <p class="eyebrow">{{ d.evidence }}</p>
+        <ul>{% for e in ex.output.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+        <p class="eyebrow">{{ d.fix }}</p>
+        <ul>{% for f in ex.output.fix %}<li>{{ f }}</li>{% endfor %}</ul>
+        <p class="eyebrow">{{ d.verify }}</p>
+        <ul>{% for v in ex.output.verify %}<li>{{ v }}</li>{% endfor %}</ul>
+        <p class="eyebrow">{{ d.severity }}</p>
+        <p class="body">{{ ex.output.severity }}</p>
+      </div>
+
+      {% elif key == "apitests" %}
+      <pre class="code"><code>{{ ex.output.code }}</code></pre>
+      <div class="card-dashed section questions">
+        <p class="eyebrow">{{ d.notes }}</p>
+        <ul>{% for n in ex.output.notes %}<li>{{ n }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endfor %}
+
+<nav class="pager">
+  <a href="{{ urls.overview }}"><span class="mono muted small">←</span><strong>{{ d.back }}</strong></a>
+</nav>
+{% endblock %}

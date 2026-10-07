@@ -364,4 +364,30 @@ Estado del trabajo (rastreado en Jira, proyecto **QA Portfolio / `QAP`**, sitio 
 - **Limitación conocida (documentada en README):** los steps `continue-on-error` figuran como `success` en la API aunque fallen, así que "passing" significa "pasaron los steps bloqueantes".
 - **Pendiente tras el deploy:** confirmar en el sitio real (`andresqe.duckdns.org`) que los badges salen con datos reales. El primer visitante debería ver ya el estado (calentamiento al arrancar).
 
-**Siguiente paso recomendado:** semana 13 (documentación avanzada + demos de IA en vivo). Decidir qué hacer con el rate limiting antes de abrir los demos al público, porque van a llamar a la API de Claude (cuestan plata) y eso hace más urgente protegerlos.
+*(Histórico: QAP-7 y QAP-8 se pasaron a Done tras verificarse en producción: el CI corrió el test corregido en verde en los 3 navegadores, y el badge del sitio real pasó solo al commit nuevo `9849c29` en ~30 s.)*
+
+---
+
+**2026-10-07 — Semana 13: giro de enfoque a "IA en general" + demos con ejemplos pregenerados (sin commitear).**
+
+**Decisiones de Andres (en este orden):**
+1. **La API de Claude se factura aparte del plan Pro** (consola de desarrolladores, por consumo, con saldo propio): el plan Pro no cubre lo que haga el sitio. Andres no tiene cuenta de API y preguntó si había una alternativa gratis. Respuesta: la documentación y los demos con ejemplos pregenerados no cuestan nada; solo las llamadas en vivo cuestan.
+2. **Andres decidió que el portafolio se enfoque en el uso de IA en general, no en una sola marca** ("usar Claude para unas tareas y otras herramientas para otras"). Se aceptó con condiciones y quedó como regla permanente en `CLAUDE.md` ("Enfoque de IA del portafolio"): cada demo declara con verdad su modelo; un ejemplo pregenerado nunca se presenta como en vivo; proveedor intercambiable; los términos de cada plan gratis se verifican en **páginas oficiales**, no blogs; respaldo con ejemplos y límite por visitante aunque sea gratis.
+3. **Orden acordado:** (1) ejemplos pregenerados, (2) capa de proveedor + límites con un cliente simulado, (3) elegir proveedor verificando páginas oficiales, (4) opcional: comparativa de modelos.
+
+**Hecho (paso 1, QAP-11 y QAP-12, en revisión):**
+- Textos del sitio (ES/EN), README y `CLAUDE.md` ajustados: ya no prometen "en vivo" ni "API de Claude".
+- Página **`/demos` y `/en/demos`** con 3 demos (casos de prueba desde una HU, analizador de bugs desde una traza, generador de tests de API desde una especificación), 2 ejemplos cada uno, ES y EN. Contenido en `app/demo_content.py`, plantilla `app/templates/site/demos.html`. Aviso permanente "Ejemplos reales, no en vivo", modelo y fecha de cada respuesta, y **ningún cuadro de entrada libre**. La tarjeta de la home y el menú ahora enlazan a la página.
+- **Verificado:** el código de los tests de API se **ejecutó contra la API real** antes de publicarlo (`3 passed` y `4 passed, 1 xfailed`, lo que declara cada ejemplo). Hallazgos reales de esa API: payload sin `firstname` → 500 (no 400), y `totalprice` no numérico se acepta y se guarda como `null` (por eso ese test es `xfail(strict=True)`). 35 pruebas en verde + 1 contra la API real con `-m network` (no corre por defecto). 3 mutaciones detectadas (página que diga "en vivo", cuadro de entrada, escape de HTML desactivado). Navegador en ES y EN y en móvil de 375 px, sin desbordamiento.
+- Dos de los ejemplos de bugs son casos reales de este proyecto (el test de login con contraseña incorrecta de la semana 12 y el choque de plugins de Allure).
+
+**Límites a tener presentes:** el visitante no puede probar su propia entrada; los casos de prueba de los ejemplos salen de los criterios de aceptación de la HU, no de comprobar la app real (solo los de API se ejecutaron); las respuestas las generó Claude Sonnet 5.5 en una sesión de Claude Code.
+
+**Pendiente de esta semana (Jira):**
+- [ ] **QAP-13** capa de proveedor de IA intercambiable + límite por visitante + tope diario + tope de longitud + respaldo a los ejemplos (probada con un cliente simulado).
+- [ ] **QAP-14** elegir el primer proveedor en vivo **verificando páginas oficiales**. Candidatos según blogs comparativos (NO verificado): Groq (30 peticiones/min, sin tarjeta), Gemini (gratis pero **usa los datos de entrada para mejorar sus modelos**: un visitante podría pegar datos reales), OpenRouter (modelos `:free` con solo 50 peticiones/día). Inclinación inicial: Groq, sin confirmar su política de datos. La cuenta la crea Andres.
+- [ ] **QAP-15** documentación avanzada de QE (estrategia, plan de pruebas, reporte ejecutivo, análisis de HUs).
+- [ ] **QAP-16** (opcional) comparativa de modelos sobre tareas de QA.
+- [ ] Pendiente transversal: **commit/push y deploy** de todo lo anterior, y comprobar `/demos` en el sitio real.
+
+**Siguiente paso recomendado:** tras el commit y el deploy, QAP-13 (capa de proveedor) y QAP-14 (verificar proveedores en páginas oficiales). El presupuesto que Andres fijó para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
