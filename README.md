@@ -165,7 +165,38 @@ Página `/demos` (`/en/demos`) con tres demos: **generador de casos de prueba** 
 - **Se probó con mutaciones que las pruebas detectan los fallos de honestidad**: que la página diga "en vivo", que aparezca un cuadro de entrada, y que se desactive el escape de HTML.
 - Verificado en el navegador, en español e inglés, y en móvil (375 px) sin desbordamiento horizontal.
 
-**Limitaciones:** el visitante no puede probar su propia entrada. Los textos de los ejemplos de casos de prueba salen de los criterios de aceptación de la historia, no de comprobar la aplicación real (solo los de API se ejecutaron). El modo en vivo, con proveedor intercambiable y límites por visitante, es el siguiente paso.
+**Limitaciones:** el visitante no puede probar su propia entrada. Los textos de los ejemplos de casos de prueba salen de los criterios de aceptación de la historia, no de comprobar la aplicación real (solo los de API se ejecutaron). La capa del modo en vivo (siguiente sección) ya existe y está probada, pero **no está conectada a ningún endpoint ni formulario**: sigue apagada.
+
+## Capa de proveedor de IA (modo en vivo, apagado)
+
+Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver "Enfoque de IA del portafolio" en `CLAUDE.md`). **Hoy no hay ningún proveedor registrado y no hay endpoint que los use:** los demos siguen mostrando los ejemplos pregenerados. Esto es la base probada, no una función activa.
+
+| Módulo | Qué hace |
+|---|---|
+| [`ai_provider.py`](app/ai_provider.py) | Interfaz `Provider` (`generate()`) y registro `PROVIDERS`, **vacío a propósito** hasta elegir proveedor verificando sus páginas oficiales (QAP-14). Cambiar de proveedor o modelo = variables del `.env`. Una configuración errónea deja el modo en vivo apagado con un aviso en el log, nunca tumba el sitio |
+| [`ai_limits.py`](app/ai_limits.py) | Límite por visitante (ventana deslizante) y tope diario global. Decisión atómica con candado; una petición rechazada no consume cupo; la memoria queda acotada por el tope diario |
+| [`ai_service.py`](app/ai_service.py) | Valida la entrada, aplica los límites, llama al proveedor y, si algo falla, devuelve el ejemplo pregenerado |
+
+**Reglas que hace cumplir el servicio:**
+- **El demo nunca depende del proveedor.** Cuota agotada (429), error, timeout, respuesta vacía o límite alcanzado → el resultado es el ejemplo pregenerado, con el motivo (`mode="fallback"`, `reason=...`). Solo `mode="live"` significa "lo generó el proveedor ahora".
+- **Límites por defecto:** 5 peticiones por visitante cada 10 min, 100 al día entre todos, entrada máxima de 4000 caracteres (se **rechaza**, nunca se trunca en silencio), respuesta máxima de 1200 tokens, 15 s de espera. Todo configurable (`.env.example`); un valor inválido vuelve al por defecto.
+- **Las llamadas fallidas también cuentan** contra el límite: el proveedor pudo haber gastado cuota igual.
+- **La entrada del visitante nunca se registra en el log** (puede traer datos sensibles), ni su IP, ni la clave de API.
+- **La entrada nunca se concatena al prompt del sistema**: viaja aparte como mensaje de usuario, y el prompt le indica al modelo que la trate como material a analizar e ignore instrucciones que traiga dentro.
+- **IP del visitante:** se usará `X-Real-IP`, que Nginx fija con la IP real y que Flask solo recibe desde Nginx (el puerto 8000 no está publicado). **No** `X-Forwarded-For`: Nginx le agrega lo que mande el cliente y se puede falsificar.
+
+**Verificado:** 67 pruebas de la capa (16 del limitador y 51 del servicio, la configuración y el proveedor) con un proveedor simulado (`app/tests/fakes.py`), sin gastar nada ni salir a la red, incluida concurrencia (100 hilos contra un mismo visitante y 200 visitantes contra el tope diario: nunca se supera el límite). Además, un análisis de mutaciones: se plantaron 12 bugs (quitar el candado, ignorar el tope diario, truncar la entrada, mezclar la entrada en el prompt del sistema, registrar la entrada en el log, subir los workers, registrar el proveedor simulado en producción...) y las pruebas detectan los 12. En una primera pasada no detectaban la falta del candado: la prueba de concurrencia no agrandaba la ventana de la carrera donde correspondía; ahora la detecta 5 de 5 veces y el código correcto pasó 25 de 25 corridas.
+
+**Requisitos antes de activar el modo en vivo (no hechos aún):**
+1. **Registrar el proveedor** en `PROVIDERS` (QAP-14), con su código tomado de la documentación oficial.
+2. **Pasar las variables `AI_*` al contenedor `app` en `docker-compose.yml`.** El compose solo entrega las variables que lista; sin esto la app no ve el `.env` aunque tenga las variables.
+3. **Gunicorn con hilos.** Hoy corre con **un worker síncrono**: mientras espera al proveedor (hasta 15 s) **todo el sitio queda bloqueado**. Hace falta `--threads` (un solo proceso, para que los límites en memoria sigan valiendo).
+4. **Endpoint y formulario**, con aviso de "no pegues datos reales ni confidenciales" y la etiqueta del modelo en cada respuesta viva.
+
+**Limitaciones conocidas:**
+- Los contadores viven **en memoria**: se ponen en cero con cada reinicio o deploy, y valen solo con **un único worker** (una prueba falla si alguien sube los workers en el `Dockerfile`; con varios habría que mover el estado a Postgres).
+- Visitantes detrás de una misma red comparten IP y, por tanto, el mismo límite.
+- No existe todavía ningún proveedor real: el comportamiento frente a uno de verdad (formato de errores, cuotas, latencia) **no se ha probado**.
 
 ## Lectura de logs desde Claude (solo lectura)
 

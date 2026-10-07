@@ -388,6 +388,28 @@ Estado del trabajo (rastreado en Jira, proyecto **QA Portfolio / `QAP`**, sitio 
 - [ ] **QAP-14** elegir el primer proveedor en vivo **verificando páginas oficiales**. Candidatos según blogs comparativos (NO verificado): Groq (30 peticiones/min, sin tarjeta), Gemini (gratis pero **usa los datos de entrada para mejorar sus modelos**: un visitante podría pegar datos reales), OpenRouter (modelos `:free` con solo 50 peticiones/día). Inclinación inicial: Groq, sin confirmar su política de datos. La cuenta la crea Andres.
 - [ ] **QAP-15** documentación avanzada de QE (estrategia, plan de pruebas, reporte ejecutivo, análisis de HUs).
 - [ ] **QAP-16** (opcional) comparativa de modelos sobre tareas de QA.
-- [ ] Pendiente transversal: **commit/push y deploy** de todo lo anterior, y comprobar `/demos` en el sitio real.
+- [x] ~~Commit/push y deploy~~ de la página de demos — **hecho 2026-10-07** (`fe112f0`): deploy en verde, `/demos` y `/en/demos` verificados en el sitio real (aviso "no en vivo", modelo declarado, 0 cuadros de entrada, 6 ejemplos, HTML escapado) y la home con los textos nuevos y los 4 badges de CI en `passing`.
 
-**Siguiente paso recomendado:** tras el commit y el deploy, QAP-13 (capa de proveedor) y QAP-14 (verificar proveedores en páginas oficiales). El presupuesto que Andres fijó para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
+---
+
+**2026-10-07 (misma sesión) — QAP-13: capa de proveedor de IA intercambiable, límites y respaldo (sin commitear, en revisión).**
+
+Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoint ni formulario, y el registro de proveedores `PROVIDERS` está vacío a propósito, así que el sitio sigue mostrando solo los ejemplos pregenerados. Detalle y reglas en la sección "Capa de proveedor de IA" del README.
+
+- **Módulos nuevos:** `app/ai_provider.py` (interfaz + registro vacío), `app/ai_limits.py` (ventana deslizante por visitante + tope diario global, atómico), `app/ai_service.py` (valida, limita, llama al proveedor y responde con el ejemplo pregenerado ante cualquier fallo). Dobles de prueba en `app/tests/fakes.py` (no se importan desde producción).
+- **Hallazgos del entorno que condicionan la activación:**
+  - Nginx fija `X-Real-IP` con la IP real y el puerto 8000 no está publicado, así que es fiable; `X-Forwarded-For` **no** (Nginx le agrega lo que mande el cliente). Se usará solo `X-Real-IP`.
+  - **Gunicorn corre con un solo worker síncrono:** una llamada lenta al proveedor (hasta 15 s) bloquearía todo el sitio. Antes de activar el modo en vivo hace falta `--threads` (manteniendo un solo proceso, porque los límites viven en memoria). Hay una prueba que falla si alguien sube los workers.
+  - `docker-compose.yml` solo entrega a `app` las variables que lista: las `AI_*` del `.env` **no llegarían** sin añadirlas. Quedó anotado en `.env.example`.
+- **Verificación:** 67 pruebas nuevas (102 en total + 1 contra la API real que corre aparte), con un proveedor simulado, sin gastar nada. Incluye concurrencia real (100 hilos contra un visitante; 200 visitantes contra el tope diario: nunca se supera el límite).
+- **Análisis de mutaciones, con una lección:** se plantaron 12 bugs y las pruebas detectan los 12. **En la primera pasada parecía que sobrevivían los 12** — era un error de mi propio script (`-q` duplicado ocultaba el resumen de pytest); se detectó porque sobrevivir 12 de 12 era imposible. Corregido eso, sobrevivía una, la más importante (quitar el candado): la prueba de concurrencia retrasaba el reloj, que se lee *antes* de comprobar, no entre comprobar y consumir. Se movió la demora al paso de consumir y ahora la detecta 5 de 5; el código correcto pasó 25 de 25 corridas (sin pruebas inestables).
+- **Lección general:** un conjunto de pruebas en verde no prueba nada hasta ver que falla cuando debe; y un resultado "perfecto" o "imposible" en el propio medidor es motivo para sospechar del medidor.
+
+**No probado, a propósito:** el comportamiento frente a un proveedor real (formato de errores, cuotas, latencia), porque todavía no existe ninguno registrado.
+
+**Pendiente (Jira):**
+- [ ] **QAP-14** elegir el primer proveedor verificando **páginas oficiales** (cuotas, tarjeta, y sobre todo si usan los datos de entrada para mejorar sus modelos). Es el siguiente paso. La cuenta la crea Andres.
+- [ ] Activación del modo en vivo (tras QAP-14): registrar el proveedor, pasar `AI_*` al compose, Gunicorn con hilos, endpoint + formulario con aviso de privacidad y etiqueta de modelo.
+- [ ] **QAP-15** documentación avanzada de QE · **QAP-16** (opcional) comparativa de modelos.
+
+**Siguiente paso recomendado:** commit/push de QAP-13 (los archivos `.py` nuevos disparan el deploy, pero la capa no está conectada: no cambia nada visible), y después QAP-14. El presupuesto que Andres fijó para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
