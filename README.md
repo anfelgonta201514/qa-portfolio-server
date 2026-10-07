@@ -169,11 +169,11 @@ Página `/demos` (`/en/demos`) con tres demos: **generador de casos de prueba** 
 
 ## Capa de proveedor de IA (modo en vivo, apagado)
 
-Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver "Enfoque de IA del portafolio" en `CLAUDE.md`). **Hoy no hay ningún proveedor registrado y no hay endpoint que los use:** los demos siguen mostrando los ejemplos pregenerados. Esto es la base probada, no una función activa.
+Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver "Enfoque de IA del portafolio" en `CLAUDE.md`). **Groq está registrado como primer proveedor (QAP-14), pero no hay endpoint que lo use y `AI_PROVIDER` está vacío:** los demos siguen mostrando los ejemplos pregenerados. Esto es la base probada, no una función activa.
 
 | Módulo | Qué hace |
 |---|---|
-| [`ai_provider.py`](app/ai_provider.py) | Interfaz `Provider` (`generate()`) y registro `PROVIDERS`, **vacío a propósito** hasta elegir proveedor verificando sus páginas oficiales (QAP-14). Cambiar de proveedor o modelo = variables del `.env`. Una configuración errónea deja el modo en vivo apagado con un aviso en el log, nunca tumba el sitio |
+| [`ai_provider.py`](app/ai_provider.py) | Interfaz `Provider` (`generate()`), registro `PROVIDERS` y `GroqProvider` (solo librería estándar), escrito con la documentación oficial de Groq. Elección y fuentes en [`docs/proveedores-ia.md`](docs/proveedores-ia.md). Cambiar de proveedor o modelo = variables del `.env`. Una configuración errónea deja el modo en vivo apagado con un aviso en el log, nunca tumba el sitio |
 | [`ai_limits.py`](app/ai_limits.py) | Límite por visitante (ventana deslizante) y tope diario global. Decisión atómica con candado; una petición rechazada no consume cupo; la memoria queda acotada por el tope diario |
 | [`ai_service.py`](app/ai_service.py) | Valida la entrada, aplica los límites, llama al proveedor y, si algo falla, devuelve el ejemplo pregenerado |
 
@@ -185,10 +185,10 @@ Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver
 - **La entrada nunca se concatena al prompt del sistema**: viaja aparte como mensaje de usuario, y el prompt le indica al modelo que la trate como material a analizar e ignore instrucciones que traiga dentro.
 - **IP del visitante:** se usará `X-Real-IP`, que Nginx fija con la IP real y que Flask solo recibe desde Nginx (el puerto 8000 no está publicado). **No** `X-Forwarded-For`: Nginx le agrega lo que mande el cliente y se puede falsificar.
 
-**Verificado:** 67 pruebas de la capa (16 del limitador y 51 del servicio, la configuración y el proveedor) con un proveedor simulado (`app/tests/fakes.py`), sin gastar nada ni salir a la red, incluida concurrencia (100 hilos contra un mismo visitante y 200 visitantes contra el tope diario: nunca se supera el límite). Además, un análisis de mutaciones: se plantaron 12 bugs (quitar el candado, ignorar el tope diario, truncar la entrada, mezclar la entrada en el prompt del sistema, registrar la entrada en el log, subir los workers, registrar el proveedor simulado en producción...) y las pruebas detectan los 12. En una primera pasada no detectaban la falta del candado: la prueba de concurrencia no agrandaba la ventana de la carrera donde correspondía; ahora la detecta 5 de 5 veces y el código correcto pasó 25 de 25 corridas.
+**Verificado:** 112 pruebas de la capa (16 del limitador, 50 del servicio y la configuración, y 46 del proveedor de Groq) con un proveedor y respuestas HTTP simuladas (`app/tests/fakes.py`), sin gastar nada ni salir a la red, incluida concurrencia (100 hilos contra un mismo visitante y 200 visitantes contra el tope diario: nunca se supera el límite). Además, un análisis de mutaciones: se plantaron 12 bugs (quitar el candado, ignorar el tope diario, truncar la entrada, mezclar la entrada en el prompt del sistema, registrar la entrada en el log, subir los workers, registrar el proveedor simulado en producción...) y las pruebas detectan los 12. En una primera pasada no detectaban la falta del candado: la prueba de concurrencia no agrandaba la ventana de la carrera donde correspondía; ahora la detecta 5 de 5 veces y el código correcto pasó 25 de 25 corridas.
 
 **Requisitos antes de activar el modo en vivo (no hechos aún):**
-1. **Registrar el proveedor** en `PROVIDERS` (QAP-14), con su código tomado de la documentación oficial.
+1. ~~Registrar el proveedor~~ — **hecho** (`GroqProvider`). Falta probarlo contra Groq de verdad: `GROQ_API_KEY=... python -m pytest app/tests -m groq_live -q -s` (la clave solo en el entorno de quien corre la prueba; consume una cantidad mínima de cuota).
 2. **Pasar las variables `AI_*` al contenedor `app` en `docker-compose.yml`.** El compose solo entrega las variables que lista; sin esto la app no ve el `.env` aunque tenga las variables.
 3. **Gunicorn con hilos.** Hoy corre con **un worker síncrono**: mientras espera al proveedor (hasta 15 s) **todo el sitio queda bloqueado**. Hace falta `--threads` (un solo proceso, para que los límites en memoria sigan valiendo).
 4. **Endpoint y formulario**, con aviso de "no pegues datos reales ni confidenciales" y la etiqueta del modelo en cada respuesta viva.
@@ -196,7 +196,7 @@ Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver
 **Limitaciones conocidas:**
 - Los contadores viven **en memoria**: se ponen en cero con cada reinicio o deploy, y valen solo con **un único worker** (una prueba falla si alguien sube los workers en el `Dockerfile`; con varios habría que mover el estado a Postgres).
 - Visitantes detrás de una misma red comparten IP y, por tanto, el mismo límite.
-- No existe todavía ningún proveedor real: el comportamiento frente a uno de verdad (formato de errores, cuotas, latencia) **no se ha probado**.
+- **`GroqProvider` no se ha probado contra Groq de verdad**: sus pruebas usan respuestas simuladas escritas según la documentación oficial. Siguen sin comprobarse la latencia real, el formato exacto de los errores, la cuota, y sobre todo **si el razonamiento de los modelos `gpt-oss` se come el tope de salida y devuelve respuestas vacías** (la documentación no dice si esos tokens cuentan; la capa ya responde con el ejemplo pregenerado en ese caso).
 
 ## Lectura de logs desde Claude (solo lectura)
 

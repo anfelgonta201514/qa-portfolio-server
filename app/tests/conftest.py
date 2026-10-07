@@ -16,15 +16,24 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest  # noqa: E402
 
 
+OPT_IN_MARKERS = {
+    "network": "necesita red (API externa)",
+    "groq_live": "usa una clave REAL de Groq y gasta cuota",
+}
+
+
 def pytest_configure(config):
-    config.addinivalue_line("markers", "network: necesita red (API externa); no corre salvo con -m network")
+    for name, why in OPT_IN_MARKERS.items():
+        config.addinivalue_line("markers", f"{name}: {why}; no corre salvo con -m {name}")
 
 
 def pytest_collection_modifyitems(config, items):
-    """Las pruebas marcadas `network` se saltan salvo que se pidan con `-m network`."""
-    if "network" in (config.getoption("-m") or ""):
-        return
-    skip = pytest.mark.skip(reason="necesita red: correr con -m network")
-    for item in items:
-        if "network" in item.keywords:
-            item.add_marker(skip)
+    """Las pruebas con marcador de "opt-in" se saltan salvo que se pidan con `-m <marcador>`."""
+    requested = config.getoption("-m") or ""
+    for name, why in OPT_IN_MARKERS.items():
+        if name in requested:
+            continue
+        skip = pytest.mark.skip(reason=f"{why}: correr con -m {name}")
+        for item in items:
+            if name in item.keywords:
+                item.add_marker(skip)

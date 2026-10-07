@@ -412,4 +412,29 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 - [ ] Activación del modo en vivo (tras QAP-14): registrar el proveedor, pasar `AI_*` al compose, Gunicorn con hilos, endpoint + formulario con aviso de privacidad y etiqueta de modelo.
 - [ ] **QAP-15** documentación avanzada de QE · **QAP-16** (opcional) comparativa de modelos.
 
-**Siguiente paso recomendado:** commit/push de QAP-13 (los archivos `.py` nuevos disparan el deploy, pero la capa no está conectada: no cambia nada visible), y después QAP-14. El presupuesto que Andres fijó para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
+*(Histórico: QAP-11, 12 y 13 estaban en Done en Jira — los movió Andres; un mensaje mío los daba por "In Review" sin haberlos releído. QAP-13 ya está desplegado y verificado: `7c33e31`, deploy en verde, sin endpoints de IA expuestos, app arrancada sin errores.)*
+
+---
+
+**2026-10-07 (misma sesión) — QAP-14: elección de proveedor, verificada en páginas oficiales, e integración de Groq (sin commitear).**
+
+**Qué se hizo.** Se leyeron las páginas **oficiales** (no blogs) de Groq, Gemini y OpenRouter. Comparativa completa, con fuentes y fecha, en `docs/proveedores-ia.md`. **Andres eligió Groq.**
+
+**Por qué Groq (y por qué no los otros):** es el único cuyo contrato respalda enviar texto escrito por visitantes. Su Acuerdo de Servicios dice que no puede usar Entradas ni Salidas para entrenar modelos salvo permiso del cliente, y por defecto no retiene los datos de inferencia. **Gemini plan gratis: descartado** para entradas de visitantes, porque sus términos dicen que se usa para mejorar productos, que personas pueden leerlo y que no se envíen datos sensibles (sí sirve para tareas con entradas públicas mías, p. ej. QAP-16). **OpenRouter: descartado** (50 peticiones/día con menos de USD 10 de crédito y política de datos de los modelos gratis sin aclarar).
+
+**Lo que NO está confirmado de Groq** (todo en el doc): si pide tarjeta para el plan gratis (ninguna página lo dice), si el Acuerdo obliga igual al plan gratis, la hora de reinicio del tope diario, la calidad real de los modelos en las 3 tareas, y si el razonamiento de `gpt-oss` consume el tope de salida. No se leyó el Anexo de Procesamiento de Datos. La página `groq.com/pricing` devolvió la portada y no se consultó.
+
+**Capacidad estimada (estimación, no medición):** el límite que manda es **200.000 tokens/día**, no las peticiones (1.000/día): ≈ 80 llamadas/día en el peor caso razonable. Por eso el tope diario por defecto (100) es demasiado alto: **empezar en 60** (`.env.example`).
+
+**Integración (`GroqProvider` en `app/ai_provider.py`).** Escrito con la documentación oficial: endpoint `https://api.groq.com/openai/v1/chat/completions`, `Authorization: Bearer`, **`max_completion_tokens` (`max_tokens` está obsoleto)**, texto en `choices[0].message.content`, tokens en `usage`, 429 = cuota. Para `openai/gpt-oss-*` pide `reasoning_effort: low` e `include_reasoning: false`. Solo librería estándar. La clave solo viaja en la cabecera; de los errores del servidor se usa solo el código HTTP (el cuerpo podría repetir la entrada del visitante).
+
+**Verificación:** 112 pruebas de la capa (46 del proveedor, con respuestas HTTP simuladas según la documentación), 148 en total (146 pasan + 2 omitidas a propósito: la de la API real de Restful-booker y la de Groq real). **14 mutaciones plantadas sobre el proveedor y las 14 detectadas** (parámetro obsoleto, clave en el cuerpo, `http` en vez de `https`, 429 como error genérico, cuerpo del error propagado, timeout ignorado, clave en el log, `Bearer` ausente, fábrica con argumentos invertidos...). 25 de 25 corridas del código correcto en verde. Antes de este paso se había cometido un error de proceso en las mutaciones de la capa (un `-q` duplicado ocultaba el resumen y parecía que sobrevivían las 12); esta vez el detector se comprobó primero con un fallo conocido.
+
+**Pendiente de verificar con una clave real (lo único que no se puede simular):** latencia, formato real de los errores, cuota real, y **si el razonamiento devuelve respuestas vacías** (la capa responde con el ejemplo pregenerado en ese caso). Se corre a mano: `GROQ_API_KEY=... python -m pytest app/tests -m groq_live -q -s` — la clave solo en el entorno de quien corre la prueba, nunca en el repo ni en el chat.
+
+**Pendiente (Jira):**
+- [ ] **QAP-14** queda **en revisión**: la comparativa y la integración están hechas, pero falta la prueba contra Groq real. Andres crea la cuenta y comprueba si pide tarjeta.
+- [ ] **Activación del modo en vivo**: pasar `AI_*` al compose, Gunicorn con hilos (`--threads`, un solo proceso), endpoint con `X-Real-IP` + formulario con aviso de privacidad y etiqueta de modelo, y medir calidad en las 3 tareas antes de abrirlo.
+- [ ] **QAP-15** documentación avanzada de QE · **QAP-16** (opcional) comparativa de modelos.
+
+**Siguiente paso recomendado:** commit/push de QAP-14 (no cambia nada visible: `AI_PROVIDER` sigue vacío), y que Andres cree la cuenta de Groq para correr la prueba real. Mientras tanto se puede avanzar con QAP-15. El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.

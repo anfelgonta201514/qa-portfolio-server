@@ -222,11 +222,6 @@ def test_build_service_with_empty_environment_has_live_mode_off():
 
 # ---------- proveedor: configuración errónea nunca tumba el sitio
 
-def test_providers_registry_is_empty_until_the_provider_is_chosen():
-    # QAP-14: el primer proveedor se elige verificando sus páginas oficiales.
-    assert ai_provider.PROVIDERS == {}
-
-
 @pytest.mark.parametrize("name", [None, "", "none", "NONE", "  "])
 def test_no_provider_means_live_mode_off(name):
     assert build_provider(name, "m", "k") is None
