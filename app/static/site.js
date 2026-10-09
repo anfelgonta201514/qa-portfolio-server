@@ -23,3 +23,21 @@
     });
   });
 })();
+
+// Formularios de los demos en vivo (QAP-18): al enviar, el botón se desactiva y avisa que está generando
+// (la respuesta del proveedor puede tardar unos segundos). Sin JS el formulario funciona igual.
+document.querySelectorAll("form[data-live-form]").forEach(function (form) {
+  form.addEventListener("submit", function () {
+    var button = form.querySelector("button[type=submit]");
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = form.dataset.busy || button.textContent;
+  });
+});
+
+// Tras enviar un demo en vivo, la página se recarga con el resultado más abajo: se lleva la vista hasta él
+// (el ancla de la URL no basta aquí porque el desplazamiento ocurre dentro del contenedor de la página).
+(function () {
+  var result = document.querySelector("[data-live-result]");
+  if (result) result.scrollIntoView({ block: "start", behavior: "instant" });  // sin animación: la página acaba de cargar
+})();

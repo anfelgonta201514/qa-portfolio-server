@@ -5,6 +5,7 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 
+from ai_service import build_service
 from login_throttle import LoginThrottle
 from models import User, db
 
@@ -47,6 +48,9 @@ def create_app():
     # "server closed the connection unexpectedly" en vez de reconectar solo.
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
     app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+    # Tope del cuerpo de cualquier petición (QAP-18): los formularios de los demos admiten hasta 4000 caracteres (hasta
+    # ~16 KB en UTF-8); más que esto se rechaza con 413 antes de leerlo entero.
+    app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 
     # Cookies de sesión (QAP-21, H4): HttpOnly (el JS no puede leerla), Secure (solo viaja por HTTPS) y SameSite=Lax
     # (el navegador no la manda en POST iniciados desde OTRO sitio: segunda barrera contra CSRF, además del token).
@@ -77,6 +81,10 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
+
+    # Demos de IA en vivo (QAP-18): se arma desde el entorno. Sin AI_PROVIDER (o con una configuración errónea) el
+    # proveedor es None, el modo en vivo queda APAGADO y los demos muestran solo los ejemplos pregenerados.
+    app.extensions["demo_service"] = build_service()
 
     from admin import admin_bp
     from api import api_bp

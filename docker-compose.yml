@@ -22,6 +22,21 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
+      # Demos de IA en vivo (QAP-18). El compose SOLO entrega a `app` las variables que lista: sin estas líneas el .env
+      # no llega a la aplicación. Vacías = valor por defecto; sin AI_PROVIDER el modo en vivo queda APAGADO.
+      # La clave (AI_API_KEY) solo vive en el .env del servidor.
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_RATE_LIMIT_PER_VISITOR: ${AI_RATE_LIMIT_PER_VISITOR:-}
+      AI_RATE_WINDOW_SECONDS: ${AI_RATE_WINDOW_SECONDS:-}
+      AI_DAILY_CAP: ${AI_DAILY_CAP:-}
+      AI_MAX_INPUT_CHARS: ${AI_MAX_INPUT_CHARS:-}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-}
+      # Límite de intentos fallidos del login (QAP-20).
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-}
+      LOGIN_WINDOW_SECONDS: ${LOGIN_WINDOW_SECONDS:-}
     depends_on:
       postgres:
         condition: service_healthy

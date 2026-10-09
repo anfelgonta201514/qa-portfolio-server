@@ -524,3 +524,22 @@ button.btn { font: inherit; font-weight: 700; background: transparent; cursor: p
 .diagnosis { padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
 .questions { padding: 18px 22px; display: flex; flex-direction: column; gap: 8px; }
 .demo .code { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---- Demos en vivo (QAP-18): solo aparecen con el modo en vivo encendido */
+.live-form { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border: 1px dashed var(--border-2); border-radius: 14px; }
+.live-form textarea {
+  width: 100%; min-height: 160px; resize: vertical; box-sizing: border-box;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border-2); border-radius: 12px;
+  padding: 12px 14px; font: 14px/1.6 var(--mono);
+}
+.live-form textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.live-form p { margin: 0; }
+.live-form .btn { align-self: flex-start; }
+.live-form .btn[disabled] { opacity: .6; cursor: progress; }
+.live-result { padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; border-left: 3px solid var(--accent); }
+.live-result[data-live-mode="live"] { border-left-color: var(--ok); }
+.live-output { max-height: 560px; overflow: auto; }
+.live-warning { color: var(--text-3); font-size: 14px; margin: 0; }
+/* `button.btn` (más arriba) deja los botones transparentes; el principal necesita su color y sin el borde por defecto. */
+button.btn.btn-primary { background: var(--accent); color: var(--bg); border: 0; }
+button.btn.btn-primary:hover:not([disabled]) { background: var(--accent-hover); }
