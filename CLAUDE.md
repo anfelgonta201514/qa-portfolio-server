@@ -87,6 +87,7 @@ Reglas que se derivan de eso (no negociables sin hablarlo con Andres):
 4. **Los planes gratuitos tienen límites y condiciones que cambian** (cuotas por minuto/día, y algunos usan los datos de entrada para mejorar sus modelos). Antes de elegir un proveedor se verifican **sus páginas oficiales**, no blogs comparativos. Cada demo con un proveedor externo lleva aviso de "no pegues datos reales ni confidenciales".
 5. **Los demos nunca dependen de que el proveedor responda:** si falla o se agota la cuota, se muestra el ejemplo pregenerado (etiquetado), no un error. Aun siendo gratis, hay límite por visitante para que una sola persona no agote la cuota diaria.
 6. **Todo texto del sitio, README y documentación evita decir "Claude API" como si fuera el único motor** del portafolio. (Lo que sí es de Claude se dice explícito: p. ej. las routines de Claude Code o los ejemplos generados con Claude.)
+7. **Modo en vivo (QAP-18):** toda respuesta generada en el momento lleva la etiqueta del modelo ("Generado ahora por …") **y** la advertencia de borrador sin verificar (y, en tests de API, de que el código no se ejecutó); el formulario lleva el aviso de privacidad. **La entrada del visitante no se registra en ningún log ni se guarda, y la IP del visitante solo se usa como clave de límites en memoria** (hay pruebas con `caplog` que lo vigilan). Viene apagado (sin `AI_PROVIDER`); **la clave de producción la pone Andres en el `.env` del servidor, nunca por el chat**, y debe ser distinta de la de pruebas.
 
 ---
 
