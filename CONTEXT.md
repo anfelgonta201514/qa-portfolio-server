@@ -6,7 +6,7 @@
 
 ---
 
-## 0. RETOMAR AQUÍ (estado al cierre de la sesión del 2026-10-09)
+## 0. RETOMAR AQUÍ (estado al cierre de la sesión del 2026-10-09, tras la v3 de QAP-17)
 
 > **Regla de oro para la próxima sesión:** las cifras y estados de esta sección eran ciertos al cerrar. **Verifícalos con la herramienta antes de repetirlos** (`git status`, JQL de Jira, `pytest --collect-only`). Ya hubo errores por citar de memoria (ver "Errores de proceso" en `CLAUDE.md`).
 
@@ -20,7 +20,7 @@ Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** 
 | Demos con ejemplos reales pregenerados, ES/EN (QAP-12) | ✅ en producción (`/demos`) |
 | Capa de proveedor intercambiable + límites + respaldo (QAP-13) | ✅ desplegada, **apagada** (`AI_PROVIDER` vacío y sin endpoint) |
 | Elección de proveedor con páginas oficiales + llamada real (QAP-14) | ✅ **Groq** (`openai/gpt-oss-20b`, plan gratis); Andres lo pasó a Done |
-| Mejora de prompts, limpieza de salida y truncado (QAP-17) | 🟡 **hecho, probado y SIN COMMITEAR; falta la medición v2** |
+| Mejora de prompts, limpieza de salida y truncado (QAP-17) | ✅ **medido 3 veces (14 → 21 → 21 de 30) y en In Review**; los cambios de la v3 están sin commitear |
 | Activar el modo en vivo (QAP-18) | ⬜ depende de QAP-17 |
 | Documentación avanzada de QE (QAP-15) | ⬜ independiente del resto |
 
@@ -28,47 +28,42 @@ Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** 
 
 Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejemplos (3 demos × 2) **etiquetados como "no en vivo"** y sin ningún cuadro de entrada; panel admin; API `/api/projects`; deploy automático por GitHub Actions; HTTPS con renovación automática. **La capa de IA está en el servidor pero no está conectada a nada: no se hace ninguna llamada a ningún proveedor.** El último commit de Andres es `c1efe70`.
 
-### 0.3 Estado de git (verificado el 2026-10-09)
+### 0.3 Estado de git (a verificar al retomar)
 
-- **`qa-automation-portfolio`:** limpio y sincronizado (último commit `9849c29`, QAP-7 resuelto y verificado en CI en los 3 navegadores).
-- **`qa-portfolio-server`:** todo sincronizado hasta `c1efe70`. **Sin commitear (todo QAP-17):** `.env.example`, `CONTEXT.md`, `README.md`, `app/ai_provider.py`, `app/ai_service.py`, `app/tests/fakes.py`, `app/tests/test_ai_service.py`, `app/tests/test_groq_provider.py`, y nuevos `app/tests/test_output_and_prompts.py`, `app/tests/test_score_measure.py`, `docs/rubrica-medicion-ia.md`, `scripts/score_measure.py`. Al pushear se dispara el deploy (hay `.py`), pero **no cambia nada visible**: los valores por defecto nuevos (tope diario 70, salida 1.600) solo valen cuando el modo en vivo esté conectado.
-- Verificado al cerrar: **215 pruebas = 212 pasan + 3 omitidas a propósito** (API real de Restful-booker, Groq mínima, Groq medición), 0 fallos en 25 corridas.
+- **`qa-automation-portfolio`:** último commit `9849c29`. Sin commitear: solo `CONTEXT.md` (la sección 0 de ese repo). Se borraron 4 carpetas vacías de la raíz (`admin_test`, `booking_battery`, `features`, `reports`; git no las rastreaba).
+- **`qa-portfolio-server`:** el trabajo base de QAP-17 ya está commiteado (`f1783e4`). **Sin commitear (v3 y documentación):** `app/ai_service.py` (tres reglas nuevas de prompt y limpieza de cercos de código y acentos graves), `app/tests/test_output_and_prompts.py` (+10 pruebas), `docs/rubrica-medicion-ia.md` (resultados v2, v3 y seguimiento), y este `CONTEXT.md` y el `README.md`. Al pushear se dispara el deploy (hay `.py`), pero **no cambia nada visible**: el modo en vivo sigue apagado.
+- **Pruebas:** la capa de IA suma **162** (16 + 50 + 62 + 34); `test_ai_limits`, `test_ai_service`, `test_groq_provider`, `test_output_and_prompts`, `test_score_measure` y `test_ci_status`: **200 pasan y 2 omitidas a propósito**. **`test_demos.py` NO se ejecutó en esta tanda:** el intérprete usado no tiene `flask_login`. Correrlo con un intérprete que tenga las dependencias de `app/requirements.txt` antes de pushear.
 
-### 0.4 EL PASO PENDIENTE: la corrida de medición v2 (Andres aún no la ha hecho)
+### 0.4 QAP-17: resultado de la medición (cerrado el 2026-10-09, en In Review)
 
-Objetivo: medir si los cambios de QAP-17 mejoraron la calidad, **con los mismos criterios de la rúbrica, sin cambiarlos**.
+Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esfuerzo `low`) y los mismos criterios. Detalle punto por punto en `docs/rubrica-medicion-ia.md`; los JSON están en `.groq-measure/` (solo local): `baseline-v1.json`, `results-v2-20261009-150750.json`, `results-v3-20261009-152435.json`.
 
-**Lo que hace Andres** (PowerShell; la clave se lee con `Read-Host`, nunca se pega en el chat; si borró la clave de prueba de la consola, crea otra en *API Keys*):
-```powershell
-cd C:\Users\andre\Documents\qa-portfolio-server
-$env:GROQ_API_KEY = Read-Host "Pega la clave"
-$env:GROQ_MEASURE_LABEL = "v2"
-& C:\Users\andre\Documents\qa-automation-portfolio\.venv\Scripts\python -m pytest app/tests/test_groq_provider.py -m groq_live -q -s -p no:allure_pytest -p no:allure_pytest_bdd -p no:cacheprovider
-```
-Tarda ~3 minutos (espera 20 s entre llamadas por el tope de 8.000 tokens/minuto) y gasta ~15.000 de los 200.000 tokens diarios. No hace falta que pegue nada: deja `.groq-measure/results-v2-<fecha>.json` y `results.json`.
+| | v1 | v2 | v3 |
+|---|---|---|---|
+| Puntuación manual (de 30) | 14 | 21 | 21 |
+| Negritas / guiones raros | 8 / 16 | 0 / 0 | 0 / 0 |
+| Código de API contra la API real | 8 pasan, 3 fallan | 4 pasan, 0 fallan | 4 pasan, 0 fallan |
+| Respuestas cortadas | 0 | 1 (bucle de repetición) | 0 |
 
-**Lo que hace Claude después:**
-1. Comparar automáticamente (necesita un intérprete con `pytest` y `requests`, ver "Cómo correr las pruebas" en `CLAUDE.md`):
-   `python scripts/score_measure.py .groq-measure/baseline-v1.json .groq-measure/results.json` (ejecuta el código de API generado contra la API real, tras un filtro estático de seguridad).
-2. **Leer las 6 respuestas completas** de `results.json` (con `python -I -X utf8`) y puntuar con la rúbrica de `docs/rubrica-medicion-ia.md`, con la misma justificación punto por punto que la línea base.
-3. Añadir a esa rúbrica una sección "Resultados v2" con la tabla **completa, incluido lo que no mejore o empeore**, y declarar que son **tres cambios a la vez** (prompts + limpieza + tope de salida). Con 6 respuestas y un muestreo, 1 o 2 puntos de diferencia no son concluyentes.
-4. Si algo empeoró, iterar los prompts (v3) y documentarlo. Después: comentario en QAP-17, moverlo a In Review, y actualizar README y esta sección.
-
-**Línea base v1** (por si `.groq-measure/baseline-v1.json` se perdiera: está solo en local, ignorado por git): **14 de 30 puntos**; 8 negritas, 16 guiones no separables (U+2011), 10 señales de invención, y el código de API generado **8 pasan / 3 fallan** contra la API real (`POST /auth` 6/0, `POST /booking` 2/3). Promedio medido 1.103 tokens por llamada, 0,74-1,72 s.
+- **Sólido:** el formato (mérito de la limpieza en código) y el código de API que pasa.
+- **No mejoró de forma fiable con prompts:** no inventar reglas, separar lo no definido y el diagnóstico de bugs (el ejemplo del locator sigue culpando al producto aunque el prompt lo prohíbe). v2 vs v3 (21 vs 21) es ruido.
+- **v3 arregló** los encabezados en inglés y el bucle de supuestos; **después de la v3** se añadió la limpieza de cercos y acentos graves (no re-medida con el modelo; en las respuestas guardadas pasó de 8 y 38 acentos graves a 0, y de ser re-puntuada habría dado 23).
+- **Sesgos declarados:** puntúa Claude con una rúbrica que escribió Claude; la regla del diagnóstico de la v3 se escribió viendo el fallo de la v2.
+- **Decisión tomada con Andres:** dejar de iterar prompts (6 ejemplos y un muestreo no justifican seguir, y se corre el riesgo de ajustar al examen). Comentario de resultados puesto en QAP-17 y movido a In Review; **Andres decide cuándo pasa a Done**.
 
 ### 0.5 Jira (estado verificado el 2026-10-09; `QAP`, ver `CLAUDE.md` para cloudId y transiciones)
 
 | Estado | Tickets |
 |---|---|
-| **In Progress** | QAP-17 (mejorar prompts y salida, volver a medir) |
-| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor) |
+| **In Progress** | — |
+| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor), **QAP-17** (mejorar prompts y salida, medido) |
 | **To Do** | QAP-9 (casos de estudio API/CI-CD/BDD), QAP-15 (documentación avanzada de QE), QAP-16 (opcional: comparativa de modelos), QAP-18 (activar el modo en vivo; depende de QAP-17) |
 | **Done** | QAP-2, 3, 4, 5, 7, 8, 11, 12, 13, 14 |
 
 ### 0.6 Qué sigue, en orden recomendado
 
-1. **Cerrar QAP-17** (la corrida v2 de arriba).
-2. **Decidir entre** QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada, que no depende de nada y no gasta cuota). Mi recomendación: QAP-15 si Andres quiere variar o avanzar el plan; QAP-18 solo si el resultado de v2 es aceptable.
+1. **Andres:** commit y push de la v3 (tras correr `test_demos.py` con las dependencias completas) y decidir si QAP-17 pasa a Done.
+2. **Decidir entre** QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada, que no depende de nada y no gasta cuota). El resultado de QAP-17 no es un buen argumento para activar el modo en vivo con confianza: si se activa, solo con etiqueta del modelo y advertencia de "borrador sin verificar". Recomendación: QAP-15 primero.
 3. **QAP-18** exige, en este orden: pasar las `AI_*` al contenedor `app` en `docker-compose.yml` (el compose solo entrega las variables que lista); **Gunicorn con `--threads`** y un solo proceso (hoy un worker síncrono: una llamada lenta bloquearía todo el sitio; hay una prueba que vigila que no se suban los workers); endpoint con la IP de `X-Real-IP` (nunca `X-Forwarded-For`); formulario con aviso de privacidad, etiqueta del modelo y la advertencia de **"borrador sin verificar"**; **una clave de servidor distinta** de la de pruebas, solo en el `.env` del servidor; pruebas del endpoint y verificación en producción. El respaldo con ejemplos pregenerados se mantiene siempre.
 4. **Semana 14 (lanzamiento):** rate limiting también en `/admin/login`, backup automático de PostgreSQL, snapshot de Oracle, validación con el prompt de "recruiter senior QA", publicar en LinkedIn. Backlog completo en la sección 3e.
 
@@ -86,7 +81,7 @@ Tarda ~3 minutos (espera 20 s entre llamadas por el tope de 8.000 tokens/minuto)
 - Los **límites reales de la consola** de Groq de Andres (solo se leyeron los de la documentación: 30 RPM, 1.000 RPD, 8.000 TPM, 200.000 TPD). Sí se confirmó que **no pidió tarjeta**.
 - Que `finish_reason == "length"` marque el corte en Groq: es la convención de estas APIs, **no se ha visto en una llamada real**.
 - Que el razonamiento cuente en los tokens de salida: es una **inferencia** (27 tokens de salida para una respuesta de ~4) no documentada por Groq.
-- La calidad de v2: **se desconoce** hasta correr la medición.
+- La limpieza de cercos y acentos graves **con el modelo real** (solo se probó sobre respuestas ya guardadas). La calidad con otro modelo o con esfuerzo de razonamiento mayor: no se midió.
 - El modo en vivo **nunca se ha probado en producción**; el reinicio real del servidor (systemd en frío) sigue sin probarse (lleva ~90 días encendido); no se leyó el Anexo de Procesamiento de Datos de Groq ni su página de precios (devolvió la portada).
 - La calidad de los casos de prueba de los **ejemplos pregenerados**: salen de los criterios de la historia, no de comprobar la aplicación real (solo el código de API se ejecutó).
 
@@ -96,7 +91,7 @@ Tarda ~3 minutos (espera 20 s entre llamadas por el tope de 8.000 tokens/minuto)
 |---|---|
 | Reglas permanentes, cómo correr pruebas, Jira, logs, errores de proceso | `CLAUDE.md` |
 | Comparativa de proveedores, hallazgo del 403 de Cloudflare, medición v1 y capacidad | `docs/proveedores-ia.md` |
-| Rúbrica y puntuación de la línea base (la v2 se añade aquí) | `docs/rubrica-medicion-ia.md` |
+| Rúbrica, puntuación de la línea base y resultados v2 y v3 | `docs/rubrica-medicion-ia.md` |
 | Reporte de sprint de la semana 12 | `docs/reporte-qe-semana-12.md` |
 | Capa de IA | `app/ai_provider.py` (Groq + registro), `app/ai_limits.py`, `app/ai_service.py` (prompts, `clean_output`) |
 | Contenido de los demos pregenerados | `app/demo_content.py` |
@@ -115,8 +110,8 @@ Sitio `https://andresqe.duckdns.org` · repos `github.com/anfelgonta201514/qa-po
 
 1. Leer `CLAUDE.md` y esta sección 0.
 2. **Verificar el estado real** (no fiarse de esta sección): `git status` en los dos repos, JQL de Jira, `pytest --collect-only`.
-3. Preguntar a Andres si **hizo el commit/push de QAP-17** y si **corrió la v2**. Si la corrió, el archivo está en `.groq-measure/`: leerlo desde disco.
-4. Seguir en 0.4 (v2) y después 0.6.
+3. Preguntar a Andres si **hizo el commit/push de la v3** y si **QAP-17 pasó a Done**.
+4. Seguir en 0.6.
 
 ---
 
@@ -601,7 +596,7 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 
 ---
 
-**2026-10-09 (misma sesión) — QAP-17: mejora de prompts y salida, y preparación de la medición v2 (sin commitear).**
+**2026-10-09 (misma sesión) — QAP-17: mejora de prompts y salida, y preparación de la medición v2.** *(Actualización posterior ese mismo día: v2 y v3 corridas y puntuadas, ver sección 0.4. Este bloque es el registro de la preparación.)*
 
 **Método.** Se fijó la rúbrica (`docs/rubrica-medicion-ia.md`) y se puntuó la línea base v1 **antes** de tocar el código, para que los criterios no pudieran ajustarse a lo que saliera. **Línea base v1: 14 de 30 puntos de rúbrica**; automático: 8 negritas, 16 guiones no separables, 10 señales de invención, API real 8 pasan y 3 fallan. La línea base está guardada en `.groq-measure/baseline-v1.json` (ignorado por git).
 
@@ -616,7 +611,7 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 **Errores de proceso de esta ronda, para no repetirlos:** los scripts con secuencias de barra invertida (`‑`) o comillas mezcladas se corrompen si se pasan por la consola; se escriben como archivo y se ejecutan. Una mutación salió "inválida" porque la frase buscada estaba partida entre dos líneas de texto: se detectó y se replanteó, no se dio por buena.
 
 **Pendiente:**
-- [ ] **Corrida v2 con la clave real** (la hace Andres; si borró la clave de prueba, crea otra), con `GROQ_MEASURE_LABEL=v2`. Luego se puntúa con los **mismos criterios, sin cambiarlos**, y se publica la tabla completa, incluido lo que no mejore.
+- [x] ~~**Corrida v2 con la clave real**~~ **hecha y superada por la v3 (ver sección 0.4)**; texto original: (la hace Andres; si borró la clave de prueba, crea otra), con `GROQ_MEASURE_LABEL=v2`. Luego se puntúa con los **mismos criterios, sin cambiarlos**, y se publica la tabla completa, incluido lo que no mejore.
 - [ ] Commit/push de lo de hoy (no cambia nada visible: `AI_PROVIDER` sigue vacío).
 - [ ] Después: QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada de QE).
 

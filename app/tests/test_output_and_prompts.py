@@ -50,6 +50,26 @@ def test_markdown_bold_and_headings_are_removed_from_prose(demo):
     assert "Test Cases" in out and "Resumen" in out and "importante" in out
 
 
+@pytest.mark.parametrize("demo", ["testcases", "bugs"])
+def test_code_fences_and_backticks_are_removed_from_prose_but_the_content_stays(demo):
+    # Hallazgo v3: el diagnóstico de bugs traía ```python ... ``` y `--alluredir` aunque el prompt lo prohíbe.
+    raw = "Usa `--alluredir`:\n```python\n    expect(x).to_be_hidden()\n```\nFin"
+    out = clean_output(raw, demo)
+    assert "`" not in out
+    assert "Usa --alluredir:" in out
+    assert "    expect(x).to_be_hidden()" in out        # el código se conserva, con su sangría
+    assert out.endswith("\nFin") and "python\n" not in out
+
+
+def test_fences_in_a_closing_line_without_trailing_newline_are_removed():
+    assert clean_output("a\n```", "bugs") == "a\n"
+
+
+def test_backticks_are_kept_in_generated_code():
+    code = "x = f\"`{a}`\"\n"                          # en código no se toca nada
+    assert clean_output(code, "apitests") == code
+
+
 def test_code_is_not_damaged_by_the_cleaning():
     # En código, `**` y `#` son sintaxis: no son markdown. Se conservan intactos.
     code = "# NOT EXECUTED - review before using\nrequests.post(url, **kwargs)\nx = dict(**a, **b)\n"
@@ -149,3 +169,31 @@ def test_apitests_prompt_forbids_assuming_rest_conventions():
     assert "Unverified assumptions" in p
     assert "uuid" in p and "timeout" in p               # datos únicos y timeouts
     assert "# NOT EXECUTED - review before using" in p  # el código no se ejecutó
+
+
+# ---------- v3 (QAP-17): reglas añadidas tras la medición v2
+
+@pytest.mark.parametrize("demo", list(SYSTEM_PROMPTS))
+def test_every_prompt_asks_for_headings_and_labels_in_the_output_language(demo):
+    # hallazgo v2: respuestas en español con "Test Cases", "Expected Result", "Assumptions to confirm"
+    p = SYSTEM_PROMPTS[demo]
+    assert "EVERY word of the prose" in p and "translate any heading" in p
+
+
+def test_named_headings_are_marked_as_translatable():
+    p = SYSTEM_PROMPTS["testcases"]
+    assert "'Assumptions to confirm' (translated)" in p
+    assert "'Questions the story leaves unanswered' (translated)" in p
+
+
+def test_bugs_prompt_makes_the_model_check_the_test_before_blaming_the_product():
+    # hallazgo v2: culpó a la UI cuando el test (de un escenario negativo) esperaba un elemento de éxito
+    p = SYSTEM_PROMPTS["bugs"]
+    assert "Before blaming the product" in p and "the likely fault is in the test" in p
+    assert "never quote a message or label text that the trace does not contain" in p
+
+
+def test_apitests_prompt_caps_the_unverified_assumptions_list():
+    # hallazgo v2: la lista degeneró en decenas de líneas repetidas hasta agotar el tope de salida
+    p = SYSTEM_PROMPTS["apitests"]
+    assert "at most 6 items" in p and "never repeat or rephrase" in p
