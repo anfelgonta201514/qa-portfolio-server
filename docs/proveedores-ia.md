@@ -65,13 +65,50 @@ Se comprobó sin usar la clave real, enviando una clave falsa de dos formas: sin
 
 **Segunda lección:** la decisión de no propagar nunca el cuerpo del error (para no filtrar lo que escribió el visitante) **tapó la causa**: el mensaje solo decía "HTTP 403". Ahora el error conserva solo diagnósticos inofensivos: el `code` y el `type` de Groq si son identificadores cortos (p. ej. `invalid_api_key`) o el código de bloqueo de Cloudflare (`cloudflare 1010`); el texto libre del `message` sigue sin propagarse jamás.
 
-## Capacidad estimada con el plan gratis de Groq (estimación, no medición)
+## Medición real con las entradas de los demos (2026-10-09)
+
+Se pasaron las 6 entradas reales de los demos (en español) por el servicio real, con los prompts, el tope de salida (1.200) y el timeout de producción, usando `openai/gpt-oss-20b` en el plan gratis. La respuesta completa de cada una quedó en `.groq-measure/results.json`, que Git ignora.
+
+| Demo / ejemplo | Segundos | Tokens entrada | Tokens salida |
+|---|---|---|---|
+| Casos de prueba / reserva | 1,72 | 308 | **1.181** |
+| Casos de prueba / login | 1,55 | 298 | 916 |
+| Bugs / locator | 0,74 | 331 | 417 |
+| Bugs / allure | 1,03 | 359 | 387 |
+| Tests de API / auth | 1,19 | 274 | 751 |
+| Tests de API / booking | 1,54 | 318 | 1.076 |
+
+**6 de 6 respuestas en vivo, ninguna vacía ni en respaldo.** Latencia de 0,74 a 1,72 s. Promedio por llamada: 315 tokens de entrada y 788 de salida (**1.103 en total**); el máximo medido fue 1.489. Esto confirma que el razonamiento cuenta dentro de los tokens de salida (la primera prueba pequeña ya lo sugería) y que con esfuerzo `low` es poco.
+
+**Capacidad con datos reales:** al promedio medido caben **~180 llamadas al día** de las 200.000 tokens; con el máximo medido, ~134. Pero las entradas de estos ejemplos son cortas (274-359 tokens contando el prompt del sistema). Con la entrada máxima permitida (4.000 caracteres, ~1.100 tokens) y la salida máxima, el peor caso es ~2.450 tokens: ~80 al día. **El tope diario debe fijarse sobre el peor caso, no sobre el promedio.**
+
+**Riesgo de truncado:** una respuesta usó **1.181 de los 1.200 tokens** permitidos. Con una historia más larga la respuesta se cortaría a media frase o a media línea de código, y hoy el servicio no lo detecta (no se lee `finish_reason`).
+
+### Calidad: leí las 6 respuestas completas
+
+**Lo que hace bien:** estructura útil y en español correcto, cobertura de casos amplia (12 casos para la reserva, con los valores límite de 10/11/21/22 caracteres del teléfono, que es lo importante), preguntas de aclaración pertinentes, y para tests de API reconoce que "200 con credenciales inválidas" es un comportamiento inusual y lo prueba por el cuerpo.
+
+**Lo que hace mal, y es el hallazgo principal: inventa lo que la entrada no dice y lo presenta como si lo dijera.**
+- *Casos de prueba, login:* añade "longitud máxima de usuario: 256 caracteres (máximo permitido)" y "longitud mínima de contraseña" con resultado esperado concreto. **La historia no define ninguno de esos límites.** Además inventa textos de interfaz ("Entrar", "Cerrar sesión") y mensajes de error literales.
+- *Bugs, locator:* acierta que el error está en el test, pero afirma que un login fallido "redirige a la página de error", cosa que la app no hace.
+- *Bugs, Allure:* acierta la causa de fondo, pero su primer paso es buscar `--alluredir` en `addopts` para borrarlo (no es el problema) y recomienda confirmar con `pytest --help`, **un comando que fallaría con el mismo error**, porque pytest revienta antes de llegar a la ayuda. Tampoco llega a nombrar la solución que usamos (`-p no:allure_pytest_bdd`).
+- *Tests de API:* **el código generado se ejecutó contra la API real**.
+  - `POST /auth`: **6 de 6 pasan**, porque la especificación ya avisaba del comportamiento raro.
+  - `POST /booking`: **3 de 5 fallan**, por asumir convenciones REST que esta API no cumple: espera 400 y la API devuelve **500** si falta un campo, espera 400 con fechas invertidas y la API las **acepta** (200), y espera un cuerpo JSON en el 404 y no lo hay. Es exactamente la trampa que advierte el `CLAUDE.md` de `qa-automation-portfolio`: no asumir el comportamiento "correcto" sin verificarlo. El modelo dejó un comentario de ambigüedades que cubre parte de esto, pero aun así afirmó el 400 sin avisar. Además usó datos fijos ("John Doe"), no únicos.
+
+**Defectos de formato:** los casos de prueba traen markdown (`**negrita**`) aunque el prompt pedía texto plano, y el ejemplo de la reserva trae **16 guiones no separables (U+2011) dentro de las fechas** (`2026‑10‑15`): copiadas a un test no son fechas válidas.
+
+### Conclusión
+
+`gpt-oss-20b` en el plan gratis es **rápido, fiable y útil como borrador**, pero **no se debe presentar como un resultado verificado**. La diferencia con los ejemplos pregenerados es concreta y medible: aquellos se revisaron y el código de API se ejecutó contra la API real antes de publicarlo; esto no. Eso es justo lo que el sitio debe decir en el modo en vivo.
+
+## Capacidad estimada con el plan gratis de Groq (estimación previa a la medición)
 
 El límite que manda no es el de peticiones, sino el de **tokens por día: 200.000**.
 
 - Una llamada típica consume entrada (hasta ~4.000 caracteres ≈ 1.000-1.300 tokens, más el prompt del sistema) y salida (hasta 1.200 tokens): del orden de **2.500 tokens** en el peor caso razonable → **~80 llamadas al día**. Si el modelo gasta tokens razonando, serían menos.
 - El límite de **8.000 tokens por minuto** permite **~3 llamadas por minuto** entre todos los visitantes. Un pico de visitas simultáneas recibiría 429, y la capa ya responde con el ejemplo pregenerado.
-- Por eso el tope diario por defecto de la capa (`AI_DAILY_CAP=100`) es **demasiado alto** para este plan: conviene empezar en **60** y ajustar con el consumo real que registre la respuesta del proveedor.
+- **Actualización tras la medición real** (ver arriba): el promedio resultó ser 1.103 tokens por llamada, menos que esta estimación; este cálculo sigue valiendo como **peor caso**. Con `AI_MAX_OUTPUT_TOKENS=1600` el peor caso es ~2.900 tokens por llamada: **`AI_DAILY_CAP=70`**.
 
 ## Fuentes (todas oficiales)
 

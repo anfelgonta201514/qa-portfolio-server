@@ -467,4 +467,20 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 
 **Pendiente:** correr esa medición (la hace Andres, con la clave en su sesión de PowerShell), revisar la calidad de las 6 respuestas, confirmar los límites reales de su consola, y solo entonces decidir si se activa el modo en vivo. QAP-14 sigue en revisión hasta tener esa medición.
 
-**Siguiente paso recomendado:** commit/push (no cambia nada visible: `AI_PROVIDER` sigue vacío), correr la medición, y revisar los resultados. El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
+---
+
+**2026-10-09 (misma sesión) — Medición real con las 6 entradas de los demos: resultados.** Detalle completo y tabla en `docs/proveedores-ia.md`, sección "Medición real".
+
+**Números:** 6 de 6 respuestas en vivo (ninguna vacía ni en respaldo), **0,74 a 1,72 s**, promedio **1.103 tokens por llamada** (315 entrada + 788 salida), máximo 1.489. El razonamiento cuenta dentro de los tokens de salida. Al promedio caben ~180 llamadas/día, pero el **peor caso** (entrada y salida máximas) es ~2.450 tokens: ~80/día; el tope diario se fija sobre el peor caso (`AI_MAX_OUTPUT_TOKENS=1600` + `AI_DAILY_CAP=70`, en `.env.example`). Una respuesta usó **1.181 de 1.200** tokens: hay riesgo de truncado y el servicio aún no lee `finish_reason`.
+
+**Calidad (se leyeron las 6 respuestas completas): el hallazgo principal es que inventa lo que la entrada no dice y lo presenta como si lo dijera.** Ejemplos: añade límites de usuario/contraseña que la historia no define, inventa textos de interfaz, dice que un login fallido "redirige a la página de error", y recomienda confirmar un fallo de pytest con `pytest --help` (fallaría con el mismo error). **El código de tests de API generado se ejecutó contra la API real:** `POST /auth` 6 de 6 pasan; `POST /booking` **3 de 5 fallan** por asumir convenciones REST (espera 400 y la API da 500; espera 400 con fechas invertidas y la API las acepta; espera JSON en el 404 y no lo hay) y usó datos fijos. Además: `**negrita**` aunque se pidió texto plano y 16 guiones no separables (U+2011) dentro de fechas.
+
+**Conclusión:** `gpt-oss-20b` en el plan gratis es rápido, fiable y útil como **borrador**, pero **no se debe presentar como resultado verificado**. La diferencia con los ejemplos pregenerados es medible: aquellos se revisaron y su código de API se ejecutó contra la API real antes de publicarlo.
+
+**Errores míos de esta ronda, para no repetirlos:** (1) las pruebas simuladas pasaban y el código no funcionaba con el servicio real (el 403 de Cloudflare); (2) la salida pegada por Andres estaba cortada porque la medición aún corría y la pegó a medias: se esperó el archivo en lugar de deducir; (3) intercambié los números de dos tickets en Jira (QAP-17/18) y lo detecté al releer las claves reales; (4) imprimí con una consola cp1252 y con `-I`, que ignora la variable de codificación: hay que usar `python -I -X utf8`.
+
+**Jira:** QAP-14 cumple su entregable (comparativa y decisión de Andres). Nuevos: **QAP-17** (mejorar prompts y salida según la medición, y volver a medir con una rúbrica) y **QAP-18** (activar el modo en vivo; depende de QAP-17).
+
+**Pendiente de Andres:** commit/push de lo de hoy (no cambia nada visible: `AI_PROVIDER` sigue vacío), pasar QAP-14 a Done si está de acuerdo, **borrar la clave de prueba de la consola**, y confirmar los límites reales de su consola.
+
+**Siguiente paso recomendado:** QAP-17 o pasar a QAP-15 (documentación avanzada de QE). El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
