@@ -8,25 +8,82 @@ name: Deploy
 #   authorized_keys: solo puede ejecutar deploy/deploy.sh, nada más.
 # - La huella del host va fijada en un secret (known_hosts), en vez de
 #   StrictHostKeyChecking=no, para no aceptar a ciegas un servidor impostor.
+#
+# Puerta de pruebas (QAP-19): el deploy NO arranca si el job `test` falla.
+# `test` también corre en pull requests, pero ahí el deploy se omite: así se
+# puede comprobar la puerta con una rama de prueba sin tocar producción.
 
 on:
   push:
     branches: [main]
     paths-ignore:
       - "**.md"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
   workflow_dispatch:
 
-# Nunca dos deploys a la vez: si llegan dos pushes seguidos, el segundo
-# espera a que termine el primero en vez de pisarse en el servidor.
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # PostgreSQL real para las pruebas de humo (-m postgres): SQLite, que usan las demás pruebas,
+    # es más permisivo que producción (QAP-20). Mismo motor y versión que docker-compose.yml.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portfolio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portfolio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13" # la misma versión que app/Dockerfile
+          cache: pip
+          cache-dependency-path: |
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r app/requirements-dev.txt
+
+      # Sin red ni secretos: las pruebas que gastan cuota o llaman a servicios
+      # externos (-m network, -m groq_live) se saltan solas (app/tests/conftest.py).
+      - name: Run tests
+        run: python -m pytest app/tests -q -p no:cacheprovider
+
+      # Opt-in: solo con -m postgres y una base cuyo nombre contenga "test" (la prueba borra sus tablas).
+      - name: Run PostgreSQL smoke tests
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg://postgres:postgres@localhost:5432/portfolio_test
+        run: python -m pytest app/tests -m postgres -q -p no:cacheprovider
+
   deploy:
     name: Deploy to server
+    needs: test
+    # En un pull request solo se prueba; nunca se despliega.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Nunca dos deploys a la vez: si llegan dos pushes seguidos, el segundo
+    # espera a que termine el primero en vez de pisarse en el servidor. Va a nivel
+    # de job (no de workflow) para que una corrida de pruebas de un PR no entre
+    # en la cola ni reemplace a un deploy pendiente.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       - name: Configure SSH
         env:
@@ -49,16 +106,22 @@ jobs:
 
       # Smoke test post-deploy: el deploy no cuenta como exitoso solo porque
       # el script terminó; tiene que responder el sitio real por HTTPS.
-      # Reintenta porque app/nginx tardan unos segundos en quedar listos.
+      # Mira la portada en los dos idiomas, los demos, la API y el login del
+      # admin (todas deben dar 2xx). Reintenta porque app/nginx tardan unos
+      # segundos en quedar listos.
       - name: Smoke test
         run: |
+          paths="/ /en/ /demos /api/projects /admin/login"
           for i in $(seq 1 10); do
-            if curl -fsS --max-time 10 https://andresqe.duckdns.org/api/projects > /dev/null \
-               && curl -fsS --max-time 10 -o /dev/null https://andresqe.duckdns.org/; then
+            failed=""
+            for p in $paths; do
+              curl -fsS --max-time 10 -o /dev/null "https://andresqe.duckdns.org$p" || failed="$failed $p"
+            done
+            if [ -z "$failed" ]; then
               echo "Sitio respondiendo OK (intento $i)"
               exit 0
             fi
-            echo "Intento $i fallido, reintentando en 6s..."
+            echo "Intento $i fallido (falló:$failed), reintentando en 6s..."
             sleep 6
           done
           echo "El sitio no respondió después del deploy"

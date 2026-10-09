@@ -104,10 +104,10 @@ Reglas para cualquier cambio de prompts, modelo, esfuerzo de razonamiento o limp
 
 ## Cómo correr las pruebas
 
-- **No hay venv en el repo.** Crear uno fuera de él: `python -m venv <ruta>` y `<ruta>\Scripts\python -m pip install -r app/requirements.txt pytest requests`.
+- **No hay venv en el repo.** Crear uno fuera de él: `python -m venv <ruta>` y `<ruta>\Scripts\python -m pip install -r app/requirements-dev.txt` (las mismas dependencias que usa el CI).
 - Desde la raíz del repo: `python -m pytest app/tests -q -p no:cacheprovider`. Si el intérprete es el venv de `qa-automation-portfolio` (trae los dos plugins de Allure, que chocan), añadir `-p no:allure_pytest -p no:allure_pytest_bdd`.
-- **Pruebas opt-in** (se saltan solas; se activan con `-m`, definido en `app/tests/conftest.py`): `-m network` (API real de Restful-booker) y `-m groq_live` (clave real de Groq, **consume cuota**).
-- Qué cubre cada archivo de `app/tests/`: `test_ci_status` (badges del CI), `test_demos` (página de demos y su honestidad), `test_ai_limits` (límites, incluida la concurrencia), `test_ai_service` (servicio, configuración, privacidad), `test_groq_provider` (proveedor con HTTP simulado y las dos pruebas reales), `test_output_and_prompts` (limpieza, truncado y reglas de los prompts), `test_score_measure` (el filtro de seguridad del puntuador).
+- **Pruebas opt-in** (se saltan solas; se activan con `-m`, definido en `app/tests/conftest.py`): `-m network` (API real de Restful-booker), `-m groq_live` (clave real de Groq, **consume cuota**) y `-m postgres` (necesita `POSTGRES_TEST_URL` con una base cuyo nombre contenga "test": **borra sus tablas**; en CI corre con un servicio PostgreSQL).
+- Qué cubre cada archivo de `app/tests/`: `test_ci_status` (badges del CI), `test_demos` (página de demos y su honestidad), `test_ai_limits` (límites, incluida la concurrencia), `test_ai_service` (servicio, configuración, privacidad), `test_groq_provider` (proveedor con HTTP simulado y las dos pruebas reales), `test_output_and_prompts` (limpieza, truncado y reglas de los prompts), `test_score_measure` (el filtro de seguridad del puntuador), `test_api_projects` y `test_admin` (contrato de la API y panel, con CSRF activo y SQLite en memoria; ayudas en `webhelpers.py`), `test_login_throttle` (límite de intentos) y `test_postgres_smoke` (humo contra PostgreSQL real, opt-in).
 - **Para fiarse de una prueba nueva:** plantar un bug a propósito, ver que falla, y restaurar. **Antes, comprobar el detector con un fallo conocido:** un resultado de "todas las mutaciones sobreviven" o "ninguna sobrevive" es motivo para sospechar del medidor, no de las pruebas.
 
 ---

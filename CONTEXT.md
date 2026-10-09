@@ -22,7 +22,7 @@ Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** 
 | Elección de proveedor con páginas oficiales + llamada real (QAP-14) | ✅ **Groq** (`openai/gpt-oss-20b`, plan gratis); Andres lo pasó a Done |
 | Mejora de prompts, limpieza de salida y truncado (QAP-17) | ✅ **medido 3 veces (14 → 21 → 21 de 30) y en In Review**; los cambios de la v3 están sin commitear |
 | Activar el modo en vivo (QAP-18) | ⬜ depende de QAP-17 |
-| Documentación avanzada de QE (QAP-15) | ⬜ independiente del resto |
+| Documentación avanzada de QE (QAP-15) | 🟡 **4 documentos escritos en `docs/qe/` (sin commitear); en In Review, pendiente de tu revisión** |
 
 ### 0.2 Qué está en producción (`https://andresqe.duckdns.org`)
 
@@ -32,7 +32,7 @@ Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejempl
 
 - **`qa-automation-portfolio`:** último commit `9849c29`. Sin commitear: solo `CONTEXT.md` (la sección 0 de ese repo). Se borraron 4 carpetas vacías de la raíz (`admin_test`, `booking_battery`, `features`, `reports`; git no las rastreaba).
 - **`qa-portfolio-server`:** el trabajo base de QAP-17 ya está commiteado (`f1783e4`). **Sin commitear (v3 y documentación):** `app/ai_service.py` (tres reglas nuevas de prompt y limpieza de cercos de código y acentos graves), `app/tests/test_output_and_prompts.py` (+10 pruebas), `docs/rubrica-medicion-ia.md` (resultados v2, v3 y seguimiento), y este `CONTEXT.md` y el `README.md`. Al pushear se dispara el deploy (hay `.py`), pero **no cambia nada visible**: el modo en vivo sigue apagado.
-- **Pruebas:** la capa de IA suma **162** (16 + 50 + 62 + 34); `test_ai_limits`, `test_ai_service`, `test_groq_provider`, `test_output_and_prompts`, `test_score_measure` y `test_ci_status`: **200 pasan y 2 omitidas a propósito**. **`test_demos.py` NO se ejecutó en esta tanda:** el intérprete usado no tiene `flask_login`. Correrlo con un intérprete que tenga las dependencias de `app/requirements.txt` antes de pushear.
+- **Pruebas:** la capa de IA suma **162** (16 + 50 + 62 + 34); `test_ai_limits`, `test_ai_service`, `test_groq_provider`, `test_output_and_prompts`, `test_score_measure` y `test_ci_status`: **200 pasan y 2 omitidas a propósito**. **Suite completa ejecutada el 2026-10-09 en un venv limpio con `app/requirements.txt` + `pytest` + `requests`: 222 pasan y 3 omitidas (225), incluido `test_demos.py`.** Ese venv vive en la carpeta temporal de la sesión; para repetirlo: `python -m venv <ruta>` e instalar esas dependencias (el venv de `qa-automation-portfolio` no trae Flask).
 
 ### 0.4 QAP-17: resultado de la medición (cerrado el 2026-10-09, en In Review)
 
@@ -56,14 +56,14 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 | Estado | Tickets |
 |---|---|
 | **In Progress** | — |
-| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor), **QAP-17** (mejorar prompts y salida, medido) |
-| **To Do** | QAP-9 (casos de estudio API/CI-CD/BDD), QAP-15 (documentación avanzada de QE), QAP-16 (opcional: comparativa de modelos), QAP-18 (activar el modo en vivo; depende de QAP-17) |
+| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor), QAP-17 (mejorar prompts y salida, medido), **QAP-15** (documentación avanzada de QE, 4 documentos en `docs/qe/`), **QAP-20** (pruebas y correcciones de la API y el login: 98 pruebas nuevas, validación, 401 JSON, 415, límite de intentos 429; **sin commitear; humo contra PostgreSQL real escrito pero SIN EJECUTAR**, corre en CI al abrir un PR), **QAP-19** (puerta de pruebas antes del deploy: hecha y probada en local, **sin commitear y sin verificar en GitHub Actions**; se verifica con un PR a `main` con una prueba rota a propósito) |
+| **To Do** | QAP-9 (casos de estudio API/CI-CD/BDD), **QAP-21** (sale de QAP-15), QAP-16 (opcional: comparativa de modelos), QAP-18 (activar el modo en vivo; depende de QAP-17) |
 | **Done** | QAP-2, 3, 4, 5, 7, 8, 11, 12, 13, 14 |
 
 ### 0.6 Qué sigue, en orden recomendado
 
-1. **Andres:** commit y push de la v3 (tras correr `test_demos.py` con las dependencias completas) y decidir si QAP-17 pasa a Done.
-2. **Decidir entre** QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada, que no depende de nada y no gasta cuota). El resultado de QAP-17 no es un buen argumento para activar el modo en vivo con confianza: si se activa, solo con etiqueta del modelo y advertencia de "borrador sin verificar". Recomendación: QAP-15 primero.
+1. **Andres:** commit y push de la v3 de QAP-17 y de `docs/qe/` + README + CONTEXT (la suite completa ya se verificó: 222 pasan, 3 omitidas); decidir si QAP-17 pasa a Done y revisar QAP-15.
+2. **Siguiente trabajo útil, en orden de valor** (de `docs/qe/estrategia-de-pruebas.md`, sección 9): (a) **puerta de pruebas antes del deploy** en `deploy.yml` (H1, 1-2 h, mayor valor); (b) pruebas y fixes de la API y del login (H2, H3, H5, H6); (c) cookies y cabeceras (H4, H7). Creados el 2026-10-09: **QAP-19** (puerta de pruebas, hecho), **QAP-20** (API y login, hecho; ver 0.5) y **QAP-21** (cookies y cabeceras de seguridad, Medium, **pendiente** y el siguiente). **QAP-18** (modo en vivo) solo con etiqueta del modelo, advertencia de "borrador sin verificar" y la puerta (a) ya hecha.
 3. **QAP-18** exige, en este orden: pasar las `AI_*` al contenedor `app` en `docker-compose.yml` (el compose solo entrega las variables que lista); **Gunicorn con `--threads`** y un solo proceso (hoy un worker síncrono: una llamada lenta bloquearía todo el sitio; hay una prueba que vigila que no se suban los workers); endpoint con la IP de `X-Real-IP` (nunca `X-Forwarded-For`); formulario con aviso de privacidad, etiqueta del modelo y la advertencia de **"borrador sin verificar"**; **una clave de servidor distinta** de la de pruebas, solo en el `.env` del servidor; pruebas del endpoint y verificación en producción. El respaldo con ejemplos pregenerados se mantiene siempre.
 4. **Semana 14 (lanzamiento):** rate limiting también en `/admin/login`, backup automático de PostgreSQL, snapshot de Oracle, validación con el prompt de "recruiter senior QA", publicar en LinkedIn. Backlog completo en la sección 3e.
 

@@ -19,7 +19,31 @@ import pytest  # noqa: E402
 OPT_IN_MARKERS = {
     "network": "necesita red (API externa)",
     "groq_live": "usa una clave REAL de Groq y gasta cuota",
+    "postgres": "necesita un PostgreSQL real (variable POSTGRES_TEST_URL)",
 }
+
+
+@pytest.fixture
+def make_app(monkeypatch):
+    """Fábrica de apps Flask NUEVAS (SQLite en memoria propia): cada prueba parte de una base vacía.
+
+    `make_app(LOGIN_MAX_FAILURES=3)` fija variables de entorno ANTES de crear la app (create_app las lee al
+    arrancar). El CSRF queda activo, como en producción: las pruebas obtienen el token de la página, igual que un
+    navegador.
+    """
+    def _make(**env):
+        for key, value in env.items():
+            monkeypatch.setenv(key, str(value))
+        from app import create_app
+        application = create_app()
+        application.config["TESTING"] = True
+        return application
+    return _make
+
+
+@pytest.fixture
+def flask_app(make_app):
+    return make_app()
 
 
 def pytest_configure(config):

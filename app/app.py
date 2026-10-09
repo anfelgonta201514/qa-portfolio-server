@@ -1,10 +1,28 @@
+import logging
 import os
 
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 
+from login_throttle import LoginThrottle
 from models import User, db
+
+log = logging.getLogger(__name__)
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        value = 0
+    if value < 1:
+        log.warning("%s=%r no es un entero >= 1: se usa %d", name, raw, default)
+        return default
+    return value
 
 
 def create_app():
@@ -26,6 +44,13 @@ def create_app():
     login_manager = LoginManager()
     login_manager.login_view = "admin.login"
     login_manager.init_app(app)
+
+    # Límite de intentos fallidos de /admin/login (QAP-20). En memoria de ESTE proceso: solo vale con un único
+    # proceso de Gunicorn (ver login_throttle.py). Un valor inválido vuelve al por defecto.
+    app.extensions["login_throttle"] = LoginThrottle(
+        max_failures=_env_int("LOGIN_MAX_FAILURES", 5),
+        window_seconds=_env_int("LOGIN_WINDOW_SECONDS", 600),
+    )
 
     @login_manager.user_loader
     def load_user(user_id):
