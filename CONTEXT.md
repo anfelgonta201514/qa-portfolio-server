@@ -1,6 +1,122 @@
 # CONTEXT.md — qa-portfolio-server
 
-> Documento de continuidad para retomar este proyecto en cualquier sesión nueva sin perder contexto. Creado el 2026-09-18. Las reglas y convenciones estables viven en [`CLAUDE.md`](CLAUDE.md).
+> Documento de continuidad para retomar este proyecto en cualquier sesión nueva sin perder contexto. Creado el 2026-09-18, última revisión completa el 2026-10-09. Las reglas y convenciones estables viven en [`CLAUDE.md`](CLAUDE.md).
+>
+> **Para retomar, leer SOLO la sección 0.** Las secciones 1 a 4 son el registro cronológico de todo lo hecho: sirven para entender el porqué de una decisión, pero **algunas afirmaciones de las secciones 2 y 3 están superadas** y no deben tomarse como estado actual.
+
+---
+
+## 0. RETOMAR AQUÍ (estado al cierre de la sesión del 2026-10-09)
+
+> **Regla de oro para la próxima sesión:** las cifras y estados de esta sección eran ciertos al cerrar. **Verifícalos con la herramienta antes de repetirlos** (`git status`, JQL de Jira, `pytest --collect-only`). Ya hubo errores por citar de memoria (ver "Errores de proceso" en `CLAUDE.md`).
+
+### 0.1 Dónde estamos
+
+Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** (documentación avanzada + demos de IA), semana 14 (lanzamiento) pendiente. Dentro de la semana 13:
+
+| Pieza | Estado |
+|---|---|
+| Enfoque de IA "general", no de una sola marca (QAP-11) | ✅ hecho y en producción |
+| Demos con ejemplos reales pregenerados, ES/EN (QAP-12) | ✅ en producción (`/demos`) |
+| Capa de proveedor intercambiable + límites + respaldo (QAP-13) | ✅ desplegada, **apagada** (`AI_PROVIDER` vacío y sin endpoint) |
+| Elección de proveedor con páginas oficiales + llamada real (QAP-14) | ✅ **Groq** (`openai/gpt-oss-20b`, plan gratis); Andres lo pasó a Done |
+| Mejora de prompts, limpieza de salida y truncado (QAP-17) | 🟡 **hecho, probado y SIN COMMITEAR; falta la medición v2** |
+| Activar el modo en vivo (QAP-18) | ⬜ depende de QAP-17 |
+| Documentación avanzada de QE (QAP-15) | ⬜ independiente del resto |
+
+### 0.2 Qué está en producción (`https://andresqe.duckdns.org`)
+
+Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejemplos (3 demos × 2) **etiquetados como "no en vivo"** y sin ningún cuadro de entrada; panel admin; API `/api/projects`; deploy automático por GitHub Actions; HTTPS con renovación automática. **La capa de IA está en el servidor pero no está conectada a nada: no se hace ninguna llamada a ningún proveedor.** El último commit de Andres es `c1efe70`.
+
+### 0.3 Estado de git (verificado el 2026-10-09)
+
+- **`qa-automation-portfolio`:** limpio y sincronizado (último commit `9849c29`, QAP-7 resuelto y verificado en CI en los 3 navegadores).
+- **`qa-portfolio-server`:** todo sincronizado hasta `c1efe70`. **Sin commitear (todo QAP-17):** `.env.example`, `CONTEXT.md`, `README.md`, `app/ai_provider.py`, `app/ai_service.py`, `app/tests/fakes.py`, `app/tests/test_ai_service.py`, `app/tests/test_groq_provider.py`, y nuevos `app/tests/test_output_and_prompts.py`, `app/tests/test_score_measure.py`, `docs/rubrica-medicion-ia.md`, `scripts/score_measure.py`. Al pushear se dispara el deploy (hay `.py`), pero **no cambia nada visible**: los valores por defecto nuevos (tope diario 70, salida 1.600) solo valen cuando el modo en vivo esté conectado.
+- Verificado al cerrar: **215 pruebas = 212 pasan + 3 omitidas a propósito** (API real de Restful-booker, Groq mínima, Groq medición), 0 fallos en 25 corridas.
+
+### 0.4 EL PASO PENDIENTE: la corrida de medición v2 (Andres aún no la ha hecho)
+
+Objetivo: medir si los cambios de QAP-17 mejoraron la calidad, **con los mismos criterios de la rúbrica, sin cambiarlos**.
+
+**Lo que hace Andres** (PowerShell; la clave se lee con `Read-Host`, nunca se pega en el chat; si borró la clave de prueba de la consola, crea otra en *API Keys*):
+```powershell
+cd C:\Users\andre\Documents\qa-portfolio-server
+$env:GROQ_API_KEY = Read-Host "Pega la clave"
+$env:GROQ_MEASURE_LABEL = "v2"
+& C:\Users\andre\Documents\qa-automation-portfolio\.venv\Scripts\python -m pytest app/tests/test_groq_provider.py -m groq_live -q -s -p no:allure_pytest -p no:allure_pytest_bdd -p no:cacheprovider
+```
+Tarda ~3 minutos (espera 20 s entre llamadas por el tope de 8.000 tokens/minuto) y gasta ~15.000 de los 200.000 tokens diarios. No hace falta que pegue nada: deja `.groq-measure/results-v2-<fecha>.json` y `results.json`.
+
+**Lo que hace Claude después:**
+1. Comparar automáticamente (necesita un intérprete con `pytest` y `requests`, ver "Cómo correr las pruebas" en `CLAUDE.md`):
+   `python scripts/score_measure.py .groq-measure/baseline-v1.json .groq-measure/results.json` (ejecuta el código de API generado contra la API real, tras un filtro estático de seguridad).
+2. **Leer las 6 respuestas completas** de `results.json` (con `python -I -X utf8`) y puntuar con la rúbrica de `docs/rubrica-medicion-ia.md`, con la misma justificación punto por punto que la línea base.
+3. Añadir a esa rúbrica una sección "Resultados v2" con la tabla **completa, incluido lo que no mejore o empeore**, y declarar que son **tres cambios a la vez** (prompts + limpieza + tope de salida). Con 6 respuestas y un muestreo, 1 o 2 puntos de diferencia no son concluyentes.
+4. Si algo empeoró, iterar los prompts (v3) y documentarlo. Después: comentario en QAP-17, moverlo a In Review, y actualizar README y esta sección.
+
+**Línea base v1** (por si `.groq-measure/baseline-v1.json` se perdiera: está solo en local, ignorado por git): **14 de 30 puntos**; 8 negritas, 16 guiones no separables (U+2011), 10 señales de invención, y el código de API generado **8 pasan / 3 fallan** contra la API real (`POST /auth` 6/0, `POST /booking` 2/3). Promedio medido 1.103 tokens por llamada, 0,74-1,72 s.
+
+### 0.5 Jira (estado verificado el 2026-10-09; `QAP`, ver `CLAUDE.md` para cloudId y transiciones)
+
+| Estado | Tickets |
+|---|---|
+| **In Progress** | QAP-17 (mejorar prompts y salida, volver a medir) |
+| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor) |
+| **To Do** | QAP-9 (casos de estudio API/CI-CD/BDD), QAP-15 (documentación avanzada de QE), QAP-16 (opcional: comparativa de modelos), QAP-18 (activar el modo en vivo; depende de QAP-17) |
+| **Done** | QAP-2, 3, 4, 5, 7, 8, 11, 12, 13, 14 |
+
+### 0.6 Qué sigue, en orden recomendado
+
+1. **Cerrar QAP-17** (la corrida v2 de arriba).
+2. **Decidir entre** QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada, que no depende de nada y no gasta cuota). Mi recomendación: QAP-15 si Andres quiere variar o avanzar el plan; QAP-18 solo si el resultado de v2 es aceptable.
+3. **QAP-18** exige, en este orden: pasar las `AI_*` al contenedor `app` en `docker-compose.yml` (el compose solo entrega las variables que lista); **Gunicorn con `--threads`** y un solo proceso (hoy un worker síncrono: una llamada lenta bloquearía todo el sitio; hay una prueba que vigila que no se suban los workers); endpoint con la IP de `X-Real-IP` (nunca `X-Forwarded-For`); formulario con aviso de privacidad, etiqueta del modelo y la advertencia de **"borrador sin verificar"**; **una clave de servidor distinta** de la de pruebas, solo en el `.env` del servidor; pruebas del endpoint y verificación en producción. El respaldo con ejemplos pregenerados se mantiene siempre.
+4. **Semana 14 (lanzamiento):** rate limiting también en `/admin/login`, backup automático de PostgreSQL, snapshot de Oracle, validación con el prompt de "recruiter senior QA", publicar en LinkedIn. Backlog completo en la sección 3e.
+
+### 0.7 Decisiones tomadas (no reabrir sin hablarlo con Andres)
+
+- **Enfoque de IA general, no de una marca** (reglas en `CLAUDE.md`). Cada demo declara su modelo; un ejemplo pregenerado nunca se presenta como en vivo.
+- **Groq como primer proveedor**, por ser el único cuya documentación oficial respalda enviar texto de visitantes (su Acuerdo de Servicios prohíbe entrenar con las entradas y salidas; sin retención por defecto). Gemini en plan gratis queda **descartado para entradas de visitantes** (usa los datos para mejorar productos y personas pueden leerlos); OpenRouter descartado (50 peticiones/día). Comparativa y fuentes: `docs/proveedores-ia.md`.
+- **Los ejemplos pregenerados se quedan siempre** como respaldo del modo en vivo.
+- **La API de Claude se factura aparte del plan Pro** (consola de desarrolladores, por consumo). Si algún día se usa: **USD 5 al mes, saldo prepagado, recarga automática apagada**. No se usa hoy.
+- **Deploy por GitHub Actions** con clave dedicada restringida por *forced command* (no por una Routine de Claude). Lectura de logs con otra clave, **de solo lectura**.
+- **Andres hace todo `git commit`/`git push`**; en estos repos no hay trailer `Co-Authored-By`. **Andres decide cuándo un ticket pasa a Done.**
+
+### 0.8 Qué NO está verificado (para no darlo por hecho)
+
+- Los **límites reales de la consola** de Groq de Andres (solo se leyeron los de la documentación: 30 RPM, 1.000 RPD, 8.000 TPM, 200.000 TPD). Sí se confirmó que **no pidió tarjeta**.
+- Que `finish_reason == "length"` marque el corte en Groq: es la convención de estas APIs, **no se ha visto en una llamada real**.
+- Que el razonamiento cuente en los tokens de salida: es una **inferencia** (27 tokens de salida para una respuesta de ~4) no documentada por Groq.
+- La calidad de v2: **se desconoce** hasta correr la medición.
+- El modo en vivo **nunca se ha probado en producción**; el reinicio real del servidor (systemd en frío) sigue sin probarse (lleva ~90 días encendido); no se leyó el Anexo de Procesamiento de Datos de Groq ni su página de precios (devolvió la portada).
+- La calidad de los casos de prueba de los **ejemplos pregenerados**: salen de los criterios de la historia, no de comprobar la aplicación real (solo el código de API se ejecutó).
+
+### 0.9 Mapa de lo importante
+
+| Qué | Dónde |
+|---|---|
+| Reglas permanentes, cómo correr pruebas, Jira, logs, errores de proceso | `CLAUDE.md` |
+| Comparativa de proveedores, hallazgo del 403 de Cloudflare, medición v1 y capacidad | `docs/proveedores-ia.md` |
+| Rúbrica y puntuación de la línea base (la v2 se añade aquí) | `docs/rubrica-medicion-ia.md` |
+| Reporte de sprint de la semana 12 | `docs/reporte-qe-semana-12.md` |
+| Capa de IA | `app/ai_provider.py` (Groq + registro), `app/ai_limits.py`, `app/ai_service.py` (prompts, `clean_output`) |
+| Contenido de los demos pregenerados | `app/demo_content.py` |
+| Estado real del CI en los badges | `app/ci_status.py` |
+| Puntuador automático (ejecuta código no confiable con filtro estático) | `scripts/score_measure.py` |
+| Resultados de mediciones con clave real | `.groq-measure/` (solo local) |
+| Lectura de logs del servidor / deploy | `deploy/logs.sh` / `deploy/deploy.sh` |
+| Variables de entorno de la capa de IA (con sus valores medidos) | `.env.example` |
+| Datos de conexión al servidor (IP, clave) | `SERVER_INFO.local.md` (gitignorado) |
+
+### 0.10 Datos de referencia
+
+Sitio `https://andresqe.duckdns.org` · repos `github.com/anfelgonta201514/qa-portfolio-server` y `qa-automation-portfolio` · Jira `andresfelgonta.atlassian.net`, proyecto `QAP` · Slack `#ci-alerts` (channel_id `C0C5A9G0P53`) · routines `trig_018RKk64jV8zHmsMQtNvq1ZB` (CI nocturno) y `trig_0142zKmhVNHWazPjBgrVPpfi` (review de PRs, cron `33 * * * *`) · Groq: organización "Personal", modelo `openai/gpt-oss-20b`, esfuerzo de razonamiento `low`.
+
+### 0.11 Checklist para arrancar la próxima sesión
+
+1. Leer `CLAUDE.md` y esta sección 0.
+2. **Verificar el estado real** (no fiarse de esta sección): `git status` en los dos repos, JQL de Jira, `pytest --collect-only`.
+3. Preguntar a Andres si **hizo el commit/push de QAP-17** y si **corrió la v2**. Si la corrió, el archivo está en `.groq-measure/`: leerlo desde disco.
+4. Seguir en 0.4 (v2) y después 0.6.
 
 ---
 
@@ -10,7 +126,7 @@ Servidor + portafolio web personal de Andres, semanas 8-14 del plan de estudio. 
 
 ---
 
-## 2. ESTADO ACTUAL
+## 2. ESTADO ACTUAL (HISTÓRICO, hasta la semana 10 — lo vigente está en la sección 0)
 
 ### ✅ Hecho
 - Servidor Oracle Cloud verificado y accesible por SSH (`ubuntu@<IP>`, ver `SERVER_INFO.local.md`).
@@ -162,7 +278,7 @@ Se retomó el plan de estudio después de cerrar completamente `qa-automation-po
 
 **2026-09-29 — Cierre funcional de la semana 8 (continuación, misma sesión).**
 
-1. Andres confirmó abrir `80` y `443` juntos (ambas capas). Se aplicó iptables local primero (inserción antes del `REJECT`, persistida), y se le dieron a Andres los pasos exactos para la Security List de Oracle (Claude no tiene acceso a su consola OCI) — lo hizo él mismo paso a paso, con capturas de pantalla, y se verificó juntos con `curl` externo ("Connection refused" en ambos puertos, confirma las dos capas abiertas).
+1. Andres confirmó abrir `80` y `443` juntos (ambas capas). Se aplicó iptables local primero (inserción antes del `REJECT`, persistida), y se le dieron a Andres los pasos exactos para la Security List de Oracle (Claude no tiene acceso a su consola OCI) — lo hizo por su cuenta paso a paso, con capturas de pantalla, y se verificó juntos con `curl` externo ("Connection refused" en ambos puertos, confirma las dos capas abiertas).
 2. Se armó el hello world dockerizado (Flask+Gunicorn detrás de Nginx), se copió al server y se levantó con `docker compose up -d --build` — confirmado con `curl` externo real (`200 OK`, JSON de Flask, headers de Nginx).
 3. Se escribió el systemd unit para levantar el compose al boot. Primer intento falló (`exit-code 125`, `journalctl` mostró que `docker compose` imprimía el help general en vez de ejecutar — el plugin de Compose estaba instalado solo para el usuario `ubuntu`, invisible para root/systemd). Se diagnosticó comparando `ls ~/.docker/cli-plugins/` vs `/usr/lib(exec)/docker/cli-plugins/` y se resolvió instalando el plugin a nivel de sistema (`/usr/local/lib/docker/cli-plugins/docker-compose`). Reintentado: `active (exited)`, `enabled`, verificado que la app seguía respondiendo.
 
@@ -174,7 +290,7 @@ Se retomó el plan de estudio después de cerrar completamente `qa-automation-po
 
 Andres pidió cerrar los pendientes menores antes de pasar a la semana 9. Se preguntó primero qué hacer con cada uno (no se asumió):
 
-1. **Regla de Palworld:** Andres eligió eliminarla. Se borró de iptables local primero (`sudo iptables -D INPUT 1` + `netfilter-persistent save`), y se le dieron a Andres los pasos para borrarla también de la Security List de Oracle (la borró él mismo desde la consola).
+1. **Regla de Palworld:** Andres eligió eliminarla. Se borró de iptables local primero (`sudo iptables -D INPUT 1` + `netfilter-persistent save`), y se le dieron a Andres los pasos para borrarla también de la Security List de Oracle (la borró por su cuenta desde la consola).
 2. **Deploy vía git:** Andres eligió crear un repo en GitHub ahora (en vez de git local sin GitHub, o dejarlo para después). Sin `gh` CLI disponible en el entorno, Andres creó el repo manualmente desde la web de GitHub (`qa-portfolio-server`, público, sin README/gitignore inicial para poder pushear el contenido local sin conflictos).
 3. Antes de pushear a un repo **público**, Andres preguntó explícitamente si era seguro dado que ahí va a vivir "toda la web, cosas personales" — pregunta válida. Se le explicó la distinción: el contenido del portafolio (bio, proyectos) es lo que se busca que sea público; lo que nunca debe estar en git (público o privado) son los secretos reales (contraseñas, API keys, `SECRET_KEY` de Flask) — eso ya estaba resuelto de entrada con `SERVER_INFO.local.md` gitignorado, y se documentó como regla dura para cuando lleguen los secretos de Postgres/Anthropic en semanas 9 y 13. Se verificó con `grep` que la IP/clave no se habían colado en ningún archivo trackeado antes de pushear.
 4. Se agregaron a `CLAUDE.md` las mismas reglas de `qa-automation-portfolio` que todavía faltaban acá (sin trailer `Co-Authored-By`, Claude no comitea/pushea sin permiso puntual) — aplicadas por el mismo criterio ya establecido en el repo hermano, sin volver a preguntarlas.
@@ -189,7 +305,7 @@ Andres pidió cerrar los pendientes menores antes de pasar a la semana 9. Se pre
 
 Andres pidió arrancar la semana 9. Se preguntó primero por el dominio/SSL (dependencia externa, necesita que Andres cree una cuenta) — eligió dejarlo para después y arrancar por la parte de datos (Postgres + modelos + API), que no depende de eso.
 
-Se armó el código (modelo `Project`, API de solo lectura, Postgres containerizado, manejo de secretos vía `.env` gitignorado) y se dejó listo. **Andres pidió hacer el deploy él mismo, paso a paso, guiado, para entender el proceso** — cambio de modalidad respecto a semanas anteriores, donde Claude ejecutaba los comandos por SSH directamente. A partir de acá, Claude da instrucciones y explica el porqué; Andres las corre en su propia terminal y pega el resultado.
+Se armó el código (modelo `Project`, API de solo lectura, Postgres containerizado, manejo de secretos vía `.env` gitignorado) y se dejó listo. **Andres pidió hacer el deploy por su cuenta, paso a paso, guiado, para entender el proceso** — cambio de modalidad respecto a semanas anteriores, donde Claude ejecutaba los comandos por SSH directamente. A partir de acá, Claude da instrucciones y explica el porqué; Andres las corre en su propia terminal y pega el resultado.
 
 El deploy guiado encontró y resolvió, en vivo, tres problemas reales (no simulados — bugs genuinos de una primera integración con Postgres):
 
@@ -206,9 +322,9 @@ Al final: `docker compose exec app python seed.py` insertó el ejemplo real (`qa
 
 **2026-09-29 — Dominio + HTTPS (misma sesión, continuación final).**
 
-Andres retomó el dominio/SSL que había pospuesto. Antes de elegir, preguntó explícitamente por las opciones porque le preocupaba que fuera "difícil de escribir" (asumía que quizás le tocaría usar su nombre completo o algo largo) — se le aclaró que el texto del subdominio lo elige él mismo, no lo asigna nadie, y se compararon 3 opciones (DuckDNS gratis, dominio propio pago, otros DNS dinámicos gratis no recomendados por mala fama/renovación manual). Eligió **DuckDNS**, gratis, para esta etapa del plan.
+Andres retomó el dominio/SSL que había pospuesto. Antes de elegir, preguntó explícitamente por las opciones porque le preocupaba que fuera "difícil de escribir" (asumía que quizás le tocaría usar su nombre completo o algo largo) — se le aclaró que el texto del subdominio lo elige por su cuenta, no lo asigna nadie, y se compararon 3 opciones (DuckDNS gratis, dominio propio pago, otros DNS dinámicos gratis no recomendados por mala fama/renovación manual). Eligió **DuckDNS**, gratis, para esta etapa del plan.
 
-1. Andres creó `andresqe.duckdns.org` él mismo (cuenta + subdominio + IP apuntando al server) — verificado con `nslookup` que resuelve exacto a `158.247.123.101`.
+1. Andres creó `andresqe.duckdns.org` por su cuenta (cuenta + subdominio + IP apuntando al server) — verificado con `nslookup` que resuelve exacto a `158.247.123.101`.
 2. Se armó el flujo de Let's Encrypt en 3 rondas, por el problema clásico del huevo y la gallina (Nginx no puede levantar con un certificado que todavía no existe):
    - **Ronda A:** se agregó a `nginx.conf` un location para servir el desafío ACME (`/.well-known/acme-challenge/`) desde un webroot compartido, y a `docker-compose.yml` un servicio `certbot` con un loop de renovación automática (`certbot renew` cada 12h) ya armado desde el principio, aunque todavía no hubiera ningún certificado que renovar.
    - **Ronda B:** se preguntó a Andres qué email usar para el registro en Let's Encrypt (preguntó si importaba — se le explicó que nunca queda público, solo se usa para avisos de renovación fallida, y se recomendó usar el email real para no perderse ese aviso). Se emitió el certificado real con `docker compose run --rm --entrypoint certbot certbot certonly --webroot ...` (hubo que pisar el entrypoint custom del servicio, que por defecto corre el loop de renovación, no `certonly`).
@@ -483,4 +599,25 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 
 **Pendiente de Andres:** commit/push de lo de hoy (no cambia nada visible: `AI_PROVIDER` sigue vacío), pasar QAP-14 a Done si está de acuerdo, **borrar la clave de prueba de la consola**, y confirmar los límites reales de su consola.
 
-**Siguiente paso recomendado:** QAP-17 o pasar a QAP-15 (documentación avanzada de QE). El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
+---
+
+**2026-10-09 (misma sesión) — QAP-17: mejora de prompts y salida, y preparación de la medición v2 (sin commitear).**
+
+**Método.** Se fijó la rúbrica (`docs/rubrica-medicion-ia.md`) y se puntuó la línea base v1 **antes** de tocar el código, para que los criterios no pudieran ajustarse a lo que saliera. **Línea base v1: 14 de 30 puntos de rúbrica**; automático: 8 negritas, 16 guiones no separables, 10 señales de invención, API real 8 pasan y 3 fallan. La línea base está guardada en `.groq-measure/baseline-v1.json` (ignorado por git).
+
+**Cambios** (cada uno responde a un hallazgo medido): prompts que solo afirman lo que la entrada dice y mandan lo no definido a "Suposiciones" o preguntas; API sin asumir convenciones REST, con datos únicos, timeouts y aviso "NOT EXECUTED"; bugs con verificaciones que sobrevivan al mismo fallo y arreglo concreto primero. **Limpieza de la salida en código** (`clean_output`): guiones y espacios parecidos (U+2010-U+2013, U+00A0, U+202F), negritas y encabezados de markdown solo en los demos de texto; nunca se toca el código de los tests de API; la raya larga se conserva. `finish_reason` leído: `length` marca la respuesta como cortada. Valores por defecto: tope de salida 1.200→**1.600**, tope diario 100→**70**.
+
+**Honestidad sobre lo que se compara:** son **tres cambios, no uno** (prompts + limpieza + tope de salida); la mejora de formato será mérito de la limpieza y no del modelo. Un solo muestreo con 6 respuestas: una diferencia de uno o dos puntos no es concluyente; lo sólido es lo ejecutado (API real) y lo automático.
+
+**Herramientas nuevas:** `scripts/score_measure.py` puntúa automáticamente y **ejecuta el código de API generado contra la API real**, tras una revisión estática de seguridad (importaciones permitidas, sin `open`/`eval`/`getattr`/`os`, solo URLs de la API de práctica) porque es código no confiable; es defensa en profundidad, no un sandbox, y solo se usa con las 6 entradas propias. La prueba `groq_live` guarda ahora un archivo por corrida con etiqueta (`GROQ_MEASURE_LABEL`) sin sobrescribir.
+
+**Verificación:** 215 pruebas (212 pasan + 3 omitidas a propósito: API real de Restful-booker, Groq mínima y medición), 0 fallos en 25 corridas. **17 mutaciones plantadas sobre lo nuevo, las 17 detectadas**, con el detector comprobado antes contra un fallo conocido. **Hallazgo propio:** las pruebas del filtro de seguridad descubrieron que mi filtro comparaba URLs con `startswith`, así que `https://restful-booker.herokuapp.com.evil.example` pasaba; corregido comparando el host exacto. Otro error mío: una prueba incluía U+2012 que la limpieza no cubría; se decidió ampliar la limpieza a U+2012 y U+2013 (también rompen una fecha) y conservar la raya larga.
+
+**Errores de proceso de esta ronda, para no repetirlos:** los scripts con secuencias de barra invertida (`‑`) o comillas mezcladas se corrompen si se pasan por la consola; se escriben como archivo y se ejecutan. Una mutación salió "inválida" porque la frase buscada estaba partida entre dos líneas de texto: se detectó y se replanteó, no se dio por buena.
+
+**Pendiente:**
+- [ ] **Corrida v2 con la clave real** (la hace Andres; si borró la clave de prueba, crea otra), con `GROQ_MEASURE_LABEL=v2`. Luego se puntúa con los **mismos criterios, sin cambiarlos**, y se publica la tabla completa, incluido lo que no mejore.
+- [ ] Commit/push de lo de hoy (no cambia nada visible: `AI_PROVIDER` sigue vacío).
+- [ ] Después: QAP-18 (activar el modo en vivo) o QAP-15 (documentación avanzada de QE).
+
+**Siguiente paso recomendado:** la corrida v2. El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.

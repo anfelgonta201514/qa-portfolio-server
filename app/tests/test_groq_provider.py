@@ -350,12 +350,16 @@ def test_real_groq_on_the_demo_examples():
             "demo": demo, "example": ex["id"], "mode": r.mode, "reason": r.reason,
             "seconds": round(time.time() - started, 2),
             "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
-            "chars": len(r.text or ""), "text": r.text,
+            "chars": len(r.text or ""), "truncated": r.truncated, "text": r.text,
         })
 
     out = pathlib.Path(__file__).resolve().parents[2] / ".groq-measure"
     out.mkdir(exist_ok=True)
-    (out / "results.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+    payload = json.dumps(rows, ensure_ascii=False, indent=2)
+    label = os.environ.get("GROQ_MEASURE_LABEL", "run")
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    (out / f"results-{label}-{stamp}.json").write_text(payload, encoding="utf-8")   # no se sobrescribe
+    (out / "results.json").write_text(payload, encoding="utf-8")                      # la más reciente
 
     print(f"\nmodelo={model}")
     print(f"{'demo':10} {'ejemplo':9} {'modo':9} {'motivo':16} {'seg':>6} {'tok_in':>7} {'tok_out':>8} {'chars':>6}")

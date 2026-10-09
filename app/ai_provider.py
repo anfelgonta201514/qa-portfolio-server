@@ -37,6 +37,7 @@ class Completion:
     model: str
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
+    truncated: bool = False   # el proveedor cortó la respuesta por el tope de salida
 
 
 class ProviderError(Exception):
@@ -156,9 +157,13 @@ class GroqProvider(Provider):
             raise ProviderError("groq: respuesta que no es JSON") from None
 
         try:
-            content = payload["choices"][0]["message"].get("content")
+            choice = payload["choices"][0]
+            content = choice["message"].get("content")
         except (KeyError, IndexError, TypeError, AttributeError):
             raise ProviderError("groq: respuesta con una forma inesperada") from None
+        # Convención de las APIs compatibles con chat completions: finish_reason "length" = cortada por el
+        # tope de salida. La documentación de Groq leída no lista los valores: se confirma con la prueba real.
+        truncated = choice.get("finish_reason") == "length"
 
         usage = payload.get("usage") if isinstance(payload, dict) else None
         usage = usage if isinstance(usage, dict) else {}
@@ -168,6 +173,7 @@ class GroqProvider(Provider):
             model=self.model,
             input_tokens=usage.get("prompt_tokens"),
             output_tokens=usage.get("completion_tokens"),
+            truncated=truncated,
         )
 
 

@@ -9,12 +9,14 @@ class FakeProvider(Provider):
 
     name = "fake"
 
-    def __init__(self, model="fake-model", text="respuesta simulada", raises=None, input_tokens=11, output_tokens=22):
+    def __init__(self, model="fake-model", text="respuesta simulada", raises=None, input_tokens=11, output_tokens=22,
+                 truncated=False):
         super().__init__(model)
         self.text = text
         self.raises = raises
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
+        self.truncated = truncated
         self.calls = []          # (system, user, max_tokens, timeout) de cada llamada
         self._lock = threading.Lock()
 
@@ -23,7 +25,7 @@ class FakeProvider(Provider):
             self.calls.append((system, user, max_tokens, timeout))
         if self.raises is not None:
             raise self.raises
-        return Completion(self.text, self.name, self.model, self.input_tokens, self.output_tokens)
+        return Completion(self.text, self.name, self.model, self.input_tokens, self.output_tokens, self.truncated)
 
 
 class Clock:

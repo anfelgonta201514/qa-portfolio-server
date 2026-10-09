@@ -196,8 +196,8 @@ def test_visitor_input_and_api_key_never_appear_in_logs(caplog):
 
 def test_config_defaults():
     cfg = AIConfig.from_env({})
-    assert (cfg.per_visitor, cfg.window_seconds, cfg.daily_cap) == (5, 600, 100)
-    assert (cfg.max_input_chars, cfg.max_output_tokens, cfg.timeout_seconds) == (4000, 1200, 15.0)
+    assert (cfg.per_visitor, cfg.window_seconds, cfg.daily_cap) == (5, 600, 70)
+    assert (cfg.max_input_chars, cfg.max_output_tokens, cfg.timeout_seconds) == (4000, 1600, 15.0)
 
 
 def test_config_reads_the_environment():
@@ -209,7 +209,7 @@ def test_config_reads_the_environment():
 def test_invalid_config_values_fall_back_to_safe_defaults_and_warn(bad, caplog):
     with caplog.at_level(logging.WARNING):
         cfg = AIConfig.from_env({"AI_DAILY_CAP": bad})
-    assert cfg.daily_cap == 100
+    assert cfg.daily_cap == 70
     if bad.strip():
         assert "AI_DAILY_CAP" in caplog.text
 
