@@ -12,7 +12,7 @@
 | HU-04 Entrar y salir del panel | Acceso por fuerza bruta | M | **A** | ✅ Límite de intentos y 51 pruebas del panel (QAP-20); cookies pendientes (QAP-21) |
 | HU-05 Gestionar los proyectos | Entrada inválida causa error 500 o corrompe datos; escritura sin autorización | M | **A** | ✅ 47 pruebas de la API + validación (QAP-20); falta ejecutar el humo con PostgreSQL |
 | HU-06 Desplegar sin miedo | Publicar con pruebas en rojo | **A** | **A** | ❌ (H1) |
-| HU-07 Probar un demo en vivo *(futura, QAP-18)* | Abuso de cuota, filtrado de datos, respuestas poco fiables | M | **A** | Capa de IA ✅ (162); endpoint ❌ |
+| HU-07 Probar un demo en vivo *(QAP-18)* | Abuso de cuota, filtrado de datos, respuestas poco fiables | M | **A** | ✅ Capa de IA (162) + endpoint y formulario con 35 pruebas y 18 más de la configuración de despliegue (QAP-18, apagado hasta poner una clave); falta la verificación con la clave real en producción |
 
 *Estado al 2026-10-09 tras QAP-20:* HU-04 y HU-05 pasaron de cobertura nula a probadas; HU-06 (la puerta de pruebas antes del deploy, QAP-19) sigue pendiente de verificarse en GitHub. Las filas de arriba conservan el análisis original, con la cobertura actualizada.
 

@@ -51,3 +51,20 @@ def login(client, username="admin", password=PASSWORD, headers=None):
 def post_form(client, path, data, token_page="/admin/"):
     """POST de formulario con un token CSRF válido (el token sale de una página que lo contenga)."""
     return client.post(path, data={**data, "csrf_token": csrf_token(client, token_page)})
+
+
+def enable_live(app, provider=None, **config):
+    """Activa el modo en vivo de los demos en `app` con un proveedor simulado (nunca se llama a un servicio real).
+
+    `config` son campos de ai_service.AIConfig (per_visitor, daily_cap, max_input_chars...). Devuelve el proveedor.
+    """
+    import demo_content
+    from ai_limits import DemoLimiter
+    from ai_service import AIConfig, DemoService
+    from fakes import FakeProvider
+
+    provider = provider or FakeProvider()
+    cfg = AIConfig(**config)
+    limiter = DemoLimiter(cfg.per_visitor, cfg.window_seconds, cfg.daily_cap)
+    app.extensions["demo_service"] = DemoService(provider, limiter, cfg, demo_content.EXAMPLES)
+    return provider

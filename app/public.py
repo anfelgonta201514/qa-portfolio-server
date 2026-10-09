@@ -1,11 +1,13 @@
+import math
 from pathlib import Path
 
-from flask import Blueprint, current_app, render_template, send_from_directory
+from flask import Blueprint, abort, current_app, render_template, request, send_from_directory, url_for
 
 import ci_status
 import content
 import demo_content
 from models import Project
+from request_ip import client_ip
 
 public_bp = Blueprint("public", __name__)
 
@@ -86,14 +88,63 @@ def _case_ui(lang):
     )
 
 
-def _demos(lang):
+def _demos(lang, live=None):
+    """Página de demos. `live` es el resultado de un intento en vivo (None al abrir la página)."""
+    service = current_app.extensions["demo_service"]
+    live_enabled = service.provider is not None
     return _render(
         "demos", lang, "site/demos.html",
         d=demo_content.UI[lang],
         model=demo_content.MODEL,
         order=demo_content.DEMO_ORDER,
         examples={key: demo_content.EXAMPLES[key][lang] for key in demo_content.DEMO_ORDER},
+        # Todo lo de abajo solo se usa con el modo en vivo encendido; apagado, la página es la de siempre.
+        live_enabled=live_enabled,
+        live=live,
+        live_action=url_for(f"public.demo_live_{lang}") if live_enabled else None,
+        live_max=service.config.max_input_chars,
+        live_provider=service.provider.name.title() if live_enabled else "",
     )
+
+
+def _live_message(lang, result, service):
+    """Texto para el visitante cuando NO hubo respuesta en vivo (entrada inválida, límite o fallo del proveedor)."""
+    template = demo_content.UI[lang]["live_messages"].get(result.reason, demo_content.UI[lang]["live_messages"]["provider_error"])
+    minutes = max(1, math.ceil((result.retry_after or 0) / 60))
+    return template.format(max=service.config.max_input_chars, minutes=minutes)
+
+
+def _demo_live(lang):
+    """POST del formulario de un demo: genera una respuesta en vivo o, si no se puede, deja los ejemplos pregenerados.
+
+    La entrada del visitante va solo al servicio (que la manda al proveedor como mensaje de usuario); aquí no se
+    registra ni se guarda. El CSRF lo exige CSRFProtect como en cualquier formulario.
+    """
+    service = current_app.extensions["demo_service"]
+    if service.provider is None:
+        abort(404)                      # modo en vivo apagado: este endpoint no existe
+
+    demo = request.form.get("demo", "")
+    text = request.form.get("input", "")
+    result = service.run(demo, text, visitor_id=client_ip(), lang=lang)
+
+    live = {
+        "key": demo if demo in demo_content.DEMO_ORDER else None,
+        "mode": result.mode,
+        "reason": result.reason,
+        "text": result.text,
+        "provider": (result.provider or "").title(),
+        "model": result.model,
+        "truncated": result.truncated,
+        "typed": text,
+        "message": None if result.mode == "live" else _live_message(lang, result, service),
+    }
+    status, headers = 200, {}
+    if result.mode == "rejected":
+        status = 400
+    elif result.mode == "fallback" and result.reason in ("visitor_limit", "daily_limit"):
+        status, headers = 429, {"Retry-After": str(result.retry_after or 60)}
+    return _demos(lang, live=live), status, headers
 
 
 @public_bp.get("/favicon.ico")
@@ -112,3 +163,13 @@ for _page, _paths in content.PAGES.items():
             endpoint=f"{_page}_{_lang}",
             view_func=(lambda view, lang: lambda: view(lang))(VIEWS[_page], _lang),
         )
+
+# Endpoint de los formularios de los demos en vivo (QAP-18): POST /demos/live y POST /en/demos/live.
+# Solo existe (si no, 404) con el modo en vivo encendido.
+for _lang, _path in (("es", "/demos/live"), ("en", "/en/demos/live")):
+    public_bp.add_url_rule(
+        _path,
+        endpoint=f"demo_live_{_lang}",
+        methods=["POST"],
+        view_func=(lambda lang: lambda: _demo_live(lang))(_lang),
+    )

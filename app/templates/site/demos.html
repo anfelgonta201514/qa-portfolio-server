@@ -10,11 +10,25 @@
   <p class="lead">{{ d.lead }}</p>
 </section>
 
-{# Aviso permanente: estos NO son resultados en vivo (regla del proyecto, ver CLAUDE.md). #}
+{# Aviso permanente (regla del proyecto, ver CLAUDE.md): los ejemplos son PREGENERADOS. Con el modo en vivo apagado
+   dice que no hay nada en vivo; encendido, dice que los ejemplos siguen siendo pregenerados y que solo lo que sale del
+   cuadro de cada demo se genera en el momento. #}
 <aside class="card demo-notice" role="note">
+  {% if live_enabled %}
+  <strong>{{ d.notice_title_live }}</strong>
+  <p>{{ d.notice_text_live.format(provider=model.provider, model=model.name, date=model.date) }}</p>
+  {% else %}
   <strong>{{ d.notice_title }}</strong>
   <p>{{ d.notice_text.format(provider=model.provider, model=model.name, date=model.date) }}</p>
+  {% endif %}
 </aside>
+
+{# Intento en vivo que no se pudo asociar a ningún demo (p. ej. un nombre de demo que no existe). #}
+{% if live and live.key is none %}
+<aside class="card live-result" data-live-result="none" data-live-mode="{{ live.mode }}" data-live-reason="{{ live.reason or '' }}" role="alert">
+  <p class="body">{{ live.message }}</p>
+</aside>
+{% endif %}
 
 {% for key in order %}
 <section class="card section demo" id="demo-{{ key }}">
@@ -23,6 +37,36 @@
     <h2>{{ d.demos[key].name }}</h2>
     <p class="body">{{ d.demos[key].what }}</p>
   </div>
+
+  {% if live_enabled %}
+  {# Modo en vivo (QAP-18). La entrada del visitante viaja por POST con token CSRF; el resultado se escapa como todo. #}
+  <form class="live-form" method="post" action="{{ live_action }}#demo-{{ key }}" data-live-form data-busy="{{ d.live_busy }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="demo" value="{{ key }}">
+    <label class="eyebrow" for="live-input-{{ key }}">{{ d.live_title }}</label>
+    <textarea id="live-input-{{ key }}" name="input" rows="8" maxlength="{{ live_max }}" required placeholder="{{ d.placeholders[key] }}">{% if live and live.key == key %}{{ live.typed }}{% endif %}</textarea>
+    <p class="small muted">{{ d.live_privacy.format(provider=live_provider) }}</p>
+    <p class="small muted">{{ d.live_limits.format(max=live_max) }}</p>
+    <p class="small muted">{{ d.live_form_warning }}</p>
+    <button type="submit" class="btn btn-primary">{{ d.live_button }}</button>
+  </form>
+
+  {% if live and live.key == key %}
+  <div class="card live-result" data-live-result="{{ key }}" data-live-mode="{{ live.mode }}" data-live-reason="{{ live.reason or '' }}"{% if live.truncated %} data-live-truncated="true"{% endif %}>
+    {% if live.mode == "live" %}
+    <p class="eyebrow">{{ d.live_generated.format(provider=live.provider, model=live.model) }}</p>
+    <pre class="code live-output"><code>{{ live.text }}</code></pre>
+    <p class="body live-warning" role="note">{{ d.live_warning }}</p>
+    {% if key == "apitests" %}<p class="body live-warning">{{ d.live_warning_code }}</p>{% endif %}
+    {% if live.truncated %}<p class="body live-warning">{{ d.live_truncated }}</p>{% endif %}
+    {% else %}
+    <p class="eyebrow">{{ d.live_fallback_title }}</p>
+    <p class="body">{{ live.message }}</p>
+    {% if live.mode == "fallback" %}<p class="body muted">{{ d.live_fallback_note }}</p>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
 
   {% for ex in examples[key] %}
   <details class="example"{% if loop.first %} open{% endif %}>

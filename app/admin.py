@@ -2,21 +2,13 @@ from flask import Blueprint, current_app, redirect, render_template, request, ur
 from flask_login import current_user, login_required, login_user, logout_user
 
 from models import Project, User, db
+from request_ip import client_ip
 from validators import parse_project
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 LOGIN_ERROR = "Usuario o contraseña incorrectos"
 LOCKED_ERROR = "Demasiados intentos fallidos. Prueba de nuevo más tarde."
-
-
-def _client_ip() -> str:
-    """Dirección del visitante para el límite de intentos.
-
-    Nginx fija X-Real-IP con la IP real (`proxy_set_header X-Real-IP $remote_addr`) y Flask solo recibe tráfico de
-    Nginx (el puerto 8000 no está publicado). Nunca X-Forwarded-For: un cliente puede añadirle lo que quiera.
-    """
-    return (request.headers.get("X-Real-IP") or request.remote_addr or "desconocida").strip()[:64]
 
 
 @admin_bp.get("/login")
@@ -29,7 +21,7 @@ def login():
 @admin_bp.post("/login")
 def login_post():
     throttle = current_app.extensions["login_throttle"]
-    ip = _client_ip()
+    ip = client_ip()
     wait = throttle.retry_after(ip)
     if wait:
         # Bloqueada: ni se mira la contraseña (con la correcta tampoco entra) y el intento no extiende el bloqueo.
