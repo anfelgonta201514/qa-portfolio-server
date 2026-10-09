@@ -127,6 +127,27 @@ jobs:
           echo "El sitio no respondió después del deploy"
           exit 1
 
+      # Cabeceras de seguridad en la respuesta REAL (QAP-21): las pone Nginx y las pruebas solo leen su archivo de
+      # configuración, así que esta es la comprobación de que de verdad llegan al visitante. Acepta la CSP en modo
+      # informe o enforzada (el prefijo `content-security-policy` cubre las dos). Si el sitio queda publicado pero
+      # falta alguna, el job falla para que se note.
+      - name: Security headers
+        run: |
+          headers=$(curl -fsSI --max-time 10 https://andresqe.duckdns.org/ | tr -d '\r')
+          echo "$headers"
+          missing=""
+          for h in strict-transport-security x-content-type-options x-frame-options referrer-policy permissions-policy content-security-policy; do
+            echo "$headers" | grep -qi "^$h" || missing="$missing $h"
+          done
+          if echo "$headers" | grep -qiE '^server: *nginx/'; then missing="$missing server-version-visible"; fi
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://andresqe.duckdns.org/)
+          [ "$status" = "301" ] || missing="$missing http-no-redirige-(recibido-$status)"
+          if [ -n "$missing" ]; then
+            echo "Falla:$missing"
+            exit 1
+          fi
+          echo "Cabeceras de seguridad y redirección HTTP -> HTTPS correctas"
+
       - name: Cleanup SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key
