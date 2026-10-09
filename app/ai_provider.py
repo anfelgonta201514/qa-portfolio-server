@@ -20,6 +20,7 @@ no se puede activar por variable de entorno en producción.
 """
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -56,6 +57,34 @@ class Provider:
 
     def generate(self, system: str, user: str, *, max_tokens: int, timeout: float) -> Completion:
         raise NotImplementedError
+
+
+_SAFE_TOKEN = re.compile(r"^[a-z0-9_]{1,40}$")
+_CLOUDFLARE_BLOCK = re.compile(rb"^error code: (\d{3,5})$")
+
+
+def _error_detail(exc: urllib.error.HTTPError) -> str:
+    """Pistas de diagnóstico de un error HTTP que NO pueden filtrar datos del visitante.
+
+    Del cuerpo del error solo se conservan valores cortos y con forma de identificador (el `code` y
+    el `type` de Groq, p. ej. "invalid_api_key") o el código de bloqueo de Cloudflare ("error code:
+    1010"). El `message` libre NUNCA se propaga: podría repetir lo que escribió el visitante.
+    Esto existe porque un 403 mudo ocultó la causa real la primera vez que se probó con Groq.
+    """
+    try:
+        raw = exc.read(2048).strip()
+    except Exception:
+        return ""
+    m = _CLOUDFLARE_BLOCK.match(raw)
+    if m:
+        return f" (cloudflare {m.group(1).decode()})"
+    try:
+        err = json.loads(raw)["error"]
+        tokens = [err.get(k) for k in ("code", "type")]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return ""
+    tokens = [t for t in tokens if isinstance(t, str) and _SAFE_TOKEN.match(t)]
+    return f" ({', '.join(tokens)})" if tokens else ""
 
 
 class GroqProvider(Provider):
@@ -104,7 +133,14 @@ class GroqProvider(Provider):
         request = urllib.request.Request(
             self.URL,
             data=json.dumps(self._body(system, user, max_tokens)).encode("utf-8"),
-            headers={"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+                # Sin un User-Agent propio, urllib se anuncia como "Python-urllib/3.x" y Cloudflare (que
+                # protege la API de Groq) lo bloquea con un 403 "error code: 1010" ANTES de mirar la
+                # clave. Descubierto en la primera llamada real; ninguna prueba simulada podía verlo.
+                "User-Agent": "qa-portfolio-server/1.0",
+            },
             method="POST",
         )
         try:
@@ -113,7 +149,7 @@ class GroqProvider(Provider):
         except urllib.error.HTTPError as exc:
             if exc.code == 429:
                 raise ProviderQuotaExceeded("groq: límite de cuota (429)") from None
-            raise ProviderError(f"groq: HTTP {exc.code}") from None
+            raise ProviderError(f"groq: HTTP {exc.code}{_error_detail(exc)}") from None
         except (urllib.error.URLError, TimeoutError, OSError):
             raise ProviderError("groq: no se pudo conectar o se agotó el tiempo de espera") from None
         except ValueError:

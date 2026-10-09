@@ -28,7 +28,7 @@ Los visitantes del sitio podrían pegar un stack trace o una historia de usuario
 
 ## Lo que NO está confirmado de Groq
 
-1. **Si pide tarjeta de crédito para el plan gratis.** Ninguna página consultada lo dice. Se sabrá al crear la cuenta.
+1. ~~Si pide tarjeta de crédito para el plan gratis.~~ **Confirmado por Andres el 2026-10-09: no la pidió** al crear la cuenta (aunque ninguna página oficial lo decía).
 2. **Si el Acuerdo de Servicios obliga igual a quienes usan el plan gratis.** La página no distingue planes.
 3. **A qué hora se reinicia el tope diario.**
 4. **Calidad real de los modelos** (`gpt-oss`, `qwen`) en estas tres tareas: hay que probarlo antes de activar. Son modelos abiertos; no tienen por qué igualar la calidad de los ejemplos pregenerados.
@@ -54,6 +54,16 @@ Los visitantes del sitio podrían pegar un stack trace o una historia de usuario
 | Razonamiento y tope | La página **no dice** si los tokens de razonamiento cuentan contra el tope de salida, y advierte que el valor por defecto "puede ser bajo" para razonamientos largos |
 
 `GroqProvider` pide `reasoning_effort: low` e `include_reasoning: false` para los modelos `openai/gpt-oss-*` (para no gastar tokens ni ancho de banda en un razonamiento que no se muestra). **No se probó contra el servicio real**: si el razonamiento consume el tope, `content` llegaría vacío y la capa respondería con el ejemplo pregenerado.
+
+## Hallazgo de la primera llamada real (2026-10-09): 403 de Cloudflare
+
+La primera prueba contra Groq con una clave real devolvió **HTTP 403**. La documentación dice que un 403 significa "permisos insuficientes", pero **la clave no tenía nada que ver**: Groq está detrás de Cloudflare, que bloquea con un 403 (`error code: 1010`) las peticiones que se anuncian con el `User-Agent` por defecto de la librería estándar de Python (`Python-urllib/3.x`), **antes de mirar la clave**.
+
+Se comprobó sin usar la clave real, enviando una clave falsa de dos formas: sin `User-Agent` propio → 403 `error code: 1010`; con uno propio → 401 `Invalid API Key` (el servidor sí llegó a evaluar la clave). Corregido enviando `User-Agent: qa-portfolio-server/1.0`.
+
+**Qué enseña:** 112 pruebas de la capa pasaban en verde y el código no funcionaba con el servicio real. Las pruebas con respuestas simuladas escritas desde la documentación solo pueden comprobar lo que la documentación dice; este requisito (Cloudflare) no está en ella. Por eso la prueba `groq_live` existe y por eso se declaró desde el principio que lo simulado no equivale a lo real.
+
+**Segunda lección:** la decisión de no propagar nunca el cuerpo del error (para no filtrar lo que escribió el visitante) **tapó la causa**: el mensaje solo decía "HTTP 403". Ahora el error conserva solo diagnósticos inofensivos: el `code` y el `type` de Groq si son identificadores cortos (p. ej. `invalid_api_key`) o el código de bloqueo de Cloudflare (`cloudflare 1010`); el texto libre del `message` sigue sin propagarse jamás.
 
 ## Capacidad estimada con el plan gratis de Groq (estimación, no medición)
 

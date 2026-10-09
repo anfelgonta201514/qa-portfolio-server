@@ -195,6 +195,61 @@ def test_error_messages_and_logs_never_contain_the_key_or_the_server_echo(http, 
     assert "eco de la ENTRADA" not in caplog.text
 
 
+# ---------- bug REAL hallado en la primera llamada a Groq (403 de Cloudflare, error 1010)
+
+def http_error_body(code, body: bytes):
+    return urllib.error.HTTPError("https://api.groq.com/x", code, "msg", {}, io.BytesIO(body))
+
+
+def test_request_sends_its_own_user_agent_never_the_python_urllib_default(http):
+    """REGRESIÓN. Sin User-Agent propio, urllib se anuncia como "Python-urllib/3.x" y Cloudflare, que
+    protege la API de Groq, lo bloquea con un 403 "error code: 1010" ANTES de mirar la clave. Se
+    descubrió con la primera llamada real; una prueba simulada no podía verlo, y este es el registro."""
+    provider().generate("s", "u", max_tokens=100, timeout=9)
+    agent = http.requests[0].get_header("User-agent")
+    assert agent and not agent.startswith("Python-urllib")
+
+
+def test_cloudflare_block_is_reported_with_its_code(http):
+    http.behavior = lambda: http_error_body(403, b"error code: 1010 \n")
+    with pytest.raises(ProviderError) as info:
+        provider().generate("s", "u", max_tokens=100, timeout=9)
+    assert "403" in str(info.value) and "cloudflare 1010" in str(info.value)
+
+
+def test_groq_error_code_and_type_are_kept_as_safe_diagnostics_but_never_the_free_text(http):
+    body = b'{"error":{"message":"ECO-DE-LA-ENTRADA-DEL-VISITANTE","type":"invalid_request_error","code":"invalid_api_key"}}'
+    http.behavior = lambda: http_error_body(401, body)
+    with pytest.raises(ProviderError) as info:
+        provider().generate("s", "u", max_tokens=100, timeout=9)
+    text = str(info.value)
+    assert "401" in text and "invalid_api_key" in text and "invalid_request_error" in text
+    assert "ECO-DE-LA-ENTRADA-DEL-VISITANTE" not in text
+
+
+@pytest.mark.parametrize("unsafe", [
+    "ECO del visitante 123",                      # texto libre con espacios y mayúsculas
+    "gsk_" + "A" * 50,                            # algo con forma de clave
+    "a" * 200,                                    # demasiado largo
+    "con\nsalto",                                 # salto de línea
+    "<script>alert(1)</script>",
+])
+def test_error_detail_discards_anything_that_is_not_a_short_identifier(http, unsafe):
+    body = json.dumps({"error": {"message": "m", "type": unsafe, "code": unsafe}}).encode()
+    http.behavior = lambda: http_error_body(400, body)
+    with pytest.raises(ProviderError) as info:
+        provider().generate("s", "u", max_tokens=100, timeout=9)
+    assert str(info.value) == "groq: HTTP 400"
+
+
+@pytest.mark.parametrize("body", [b"", b"<html>502</html>", b'{"error": "solo texto"}', b'{"error": null}', b"[]", b"\xff\xfe", b"error code: abc"])
+def test_error_detail_survives_unreadable_or_odd_bodies(http, body):
+    http.behavior = lambda: http_error_body(500, body)
+    with pytest.raises(ProviderError) as info:
+        provider().generate("s", "u", max_tokens=100, timeout=9)
+    assert str(info.value) == "groq: HTTP 500"
+
+
 # ---------- registro y configuración
 
 def test_groq_is_registered_and_built_from_environment():
@@ -260,3 +315,54 @@ def test_real_groq_answers_a_tiny_prompt():
     print(f"\nmodelo={c.model} tokens_entrada={c.input_tokens} tokens_salida={c.output_tokens}\nrespuesta={c.text[:200]!r}")
     assert c.text.strip(), "respuesta vacía: ¿el razonamiento consumió todo el tope? subir max_tokens"
     assert (c.output_tokens or 0) > 0
+
+
+@pytest.mark.groq_live
+def test_real_groq_on_the_demo_examples():
+    """MIDE con la clave real lo que costaría usar de verdad los 3 demos (6 entradas, en español).
+
+    Pasa cada entrada por el servicio real (prompts, tope de salida y timeout de producción) y deja
+    los resultados completos en .groq-measure/results.json (ignorado por git) para revisarlos:
+        GROQ_API_KEY=... python -m pytest app/tests/test_groq_provider.py -m groq_live -q -s
+    Gasta unos 15.000 tokens de los 200.000 diarios del plan gratis. Tarda ~2 minutos porque
+    espera 20 s entre llamadas para no pasar el tope de 8.000 tokens por minuto.
+    """
+    import pathlib
+    import time
+
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        pytest.skip("falta GROQ_API_KEY")
+    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+
+    cfg = AIConfig(per_visitor=50, daily_cap=50)
+    svc = DemoService(GroqProvider(model, key), DemoLimiter(cfg.per_visitor, cfg.window_seconds, cfg.daily_cap),
+                      cfg, demo_content.EXAMPLES)
+
+    cases = [(demo, ex) for demo in demo_content.DEMO_ORDER for ex in demo_content.EXAMPLES[demo]["es"]]
+    rows = []
+    for i, (demo, ex) in enumerate(cases):
+        if i:
+            time.sleep(20)  # respeta el tope de tokens por minuto del plan gratis
+        started = time.time()
+        r = svc.run(demo, ex["input"], "medicion", "es")
+        rows.append({
+            "demo": demo, "example": ex["id"], "mode": r.mode, "reason": r.reason,
+            "seconds": round(time.time() - started, 2),
+            "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
+            "chars": len(r.text or ""), "text": r.text,
+        })
+
+    out = pathlib.Path(__file__).resolve().parents[2] / ".groq-measure"
+    out.mkdir(exist_ok=True)
+    (out / "results.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"\nmodelo={model}")
+    print(f"{'demo':10} {'ejemplo':9} {'modo':9} {'motivo':16} {'seg':>6} {'tok_in':>7} {'tok_out':>8} {'chars':>6}")
+    for r in rows:
+        print(f"{r['demo']:10} {r['example']:9} {r['mode']:9} {str(r['reason'] or '-'):16} {r['seconds']:>6} "
+              f"{str(r['input_tokens']):>7} {str(r['output_tokens']):>8} {r['chars']:>6}")
+    live = [r for r in rows if r["mode"] == "live"]
+    print(f"TOTAL tokens: entrada={sum(r['input_tokens'] or 0 for r in live)} salida={sum(r['output_tokens'] or 0 for r in live)}"
+          f" | respuestas en vivo: {len(live)} de {len(rows)}")
+    assert len(live) == len(rows), "alguna llamada cayó en respaldo: revisa el motivo en la tabla y en results.json"

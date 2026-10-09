@@ -8,3 +8,6 @@ __pycache__/
 venv/
 node_modules/
 .idea/
+
+# Resultados de mediciones con claves reales (pueden contener respuestas del modelo)
+.groq-measure/

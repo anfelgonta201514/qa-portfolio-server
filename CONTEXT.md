@@ -437,4 +437,34 @@ Se construyó la base del modo en vivo **sin conectarla a nada**: no hay endpoin
 - [ ] **Activación del modo en vivo**: pasar `AI_*` al compose, Gunicorn con hilos (`--threads`, un solo proceso), endpoint con `X-Real-IP` + formulario con aviso de privacidad y etiqueta de modelo, y medir calidad en las 3 tareas antes de abrirlo.
 - [ ] **QAP-15** documentación avanzada de QE · **QAP-16** (opcional) comparativa de modelos.
 
-**Siguiente paso recomendado:** commit/push de QAP-14 (no cambia nada visible: `AI_PROVIDER` sigue vacío), y que Andres cree la cuenta de Groq para correr la prueba real. Mientras tanto se puede avanzar con QAP-15. El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
+*(Histórico: QAP-14 se comiteó y desplegó en `7c7a912`, deploy en verde. Andres creó la cuenta de Groq.)*
+
+---
+
+**2026-10-09 — Primera llamada real a Groq: falló con un 403 que ninguna prueba simulada podía ver (corregido, sin commitear).**
+
+**Datos de la cuenta (confirmados por Andres):** el registro **no pidió tarjeta de crédito**; la consola muestra el plan gratis ("Upgrade to Dev Plan — No charge today"), org "Personal", "Default Project", y los modelos `GPT OSS 120B`, `GPT OSS 20B` y `Qwen 3.8 27B` (coinciden con los de la documentación). El Playground de Groq propone por defecto `max_completion_tokens=2048` y `reasoning_effort="medium"`. Faltan por confirmar los **límites reales de su consola**.
+
+**El fallo.** La prueba `groq_live` (corrida por Andres en su PC, con la clave solo en una variable de entorno de esa sesión, leída con `Read-Host`) devolvió `HTTP 403`. La documentación dice que un 403 es "permisos insuficientes", y **no lo era**. Se comprobó sin usar su clave, enviando una clave falsa de dos formas: sin `User-Agent` propio → 403 `error code: 1010` de Cloudflare; con uno propio → 401 `Invalid API Key` (el servidor sí llegó a evaluar la clave). Es decir: Groq está detrás de Cloudflare, que bloquea el `User-Agent` por defecto de `urllib` (`Python-urllib/3.x`) **antes de mirar la clave**.
+
+**Dos lecciones, ambas contra supuestos míos:**
+1. **112 pruebas de la capa en verde y el código no funcionaba con el servicio real.** Las pruebas simuladas, escritas desde la documentación, solo comprueban lo que la documentación dice, y ese requisito de Cloudflare no está en ella. Por eso se había declarado desde el principio que lo simulado no equivalía a lo real, y la prueba `groq_live` era necesaria.
+2. **Mi decisión de no propagar nunca el cuerpo del error tapó la causa:** el mensaje solo decía "HTTP 403". Se resolvió sin abrir un hueco de privacidad: el error ahora conserva solo diagnósticos inofensivos, el `code` y el `type` de Groq si son identificadores cortos (`invalid_api_key`) o el código de Cloudflare (`cloudflare 1010`), y el `message` libre sigue sin propagarse jamás.
+
+**Cambios:** `app/ai_provider.py` (cabecera `User-Agent: qa-portfolio-server/1.0` y `_error_detail`), +15 pruebas en `test_groq_provider.py` (regresión del User-Agent, diagnóstico seguro, cuerpos de error raros). **Verificación:** 161 pasan + 2 omitidas a propósito (163 en total, 127 de la capa de IA). **8 mutaciones nuevas sobre lo añadido, las 8 detectadas** (quitar el User-Agent, volver al de urllib, incluir el mensaje libre, aceptar tokens no seguros, perder el código de Cloudflare, no capturar cuerpos raros, devolver todo el cuerpo, no adjuntar el diagnóstico), con el detector comprobado primero contra un fallo conocido.
+
+**Pendiente:**
+- [ ] **Repetir la prueba real con la corrección** (la misma orden; la clave sigue en la variable de entorno si Andres no cerró esa ventana de PowerShell). Hasta ver una respuesta real, QAP-14 sigue sin cerrarse con evidencia: faltan latencia real, tokens reales por llamada, y **si el razonamiento de `gpt-oss` devuelve respuestas vacías** (la prueba usa `max_tokens=400`, que podría quedarse corto si razona).
+- [ ] Andres: los **límites de su consola** para `openai/gpt-oss-20b` (peticiones y tokens por minuto y por día).
+- [ ] Andres: borrar la clave de prueba de la consola al terminar, y crear otra distinta para el servidor cuando se active el modo en vivo.
+- [ ] **QAP-15** documentación avanzada de QE · **QAP-16** (opcional) comparativa de modelos.
+
+*(Actualización, mismo día: Andres repitió la prueba real con la corrección y **pasó**.)*
+
+**Primera llamada real exitosa a Groq.** `openai/gpt-oss-20b`, HTTP 200, 104 tokens de entrada y 27 de salida, respuesta correcta ("11 characters", el límite inferior de un campo de 11 a 21 caracteres), 0,53 s con el arranque de pytest incluido. **Pista, marcada como inferencia y no como dato documentado:** la respuesta visible son ~4 tokens y `completion_tokens` es 27, así que parece que el razonamiento sí cuenta en la salida (con esfuerzo `low`, ~23 tokens aquí).
+
+**Esa llamada no se parece a un uso real.** Se añadió una segunda prueba opt-in, `test_real_groq_on_the_demo_examples` (`-m groq_live`), que pasa las 6 entradas reales de los demos (en español) por el servicio real (prompts, tope de 1.200 tokens y timeout de producción), espera 20 s entre llamadas para no pasar el tope de 8.000 tokens/minuto, imprime una tabla (tokens, segundos, modo, motivo) y guarda los resultados completos en `.groq-measure/results.json` (ignorado por git). Gasta ~15.000 de los 200.000 tokens diarios. Con eso se podrá medir **tokens reales por llamada, latencia, respuestas vacías y calidad frente a los ejemplos pregenerados**, y fijar el tope diario con datos. 161 pruebas pasan + 3 omitidas a propósito.
+
+**Pendiente:** correr esa medición (la hace Andres, con la clave en su sesión de PowerShell), revisar la calidad de las 6 respuestas, confirmar los límites reales de su consola, y solo entonces decidir si se activa el modo en vivo. QAP-14 sigue en revisión hasta tener esa medición.
+
+**Siguiente paso recomendado:** commit/push (no cambia nada visible: `AI_PROVIDER` sigue vacío), correr la medición, y revisar los resultados. El presupuesto fijado para la API de Claude, si algún día se usa, es de USD 5 al mes con saldo prepagado y recarga automática apagada.
