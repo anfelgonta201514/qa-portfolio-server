@@ -10,6 +10,9 @@ import sys
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("SECRET_KEY", "solo-para-pruebas")
 os.environ.setdefault("CI_STATUS_DISABLED", "1")
+# El cliente de pruebas habla http: una cookie Secure no volvería (sin sesión no hay login ni CSRF). En producción la
+# cookie SÍ es Secure; test_security_config.py lo comprueba con una app creada sin esta variable.
+os.environ.setdefault("SESSION_COOKIE_SECURE", "0")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

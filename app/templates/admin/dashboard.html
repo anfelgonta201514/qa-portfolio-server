@@ -17,7 +17,7 @@
         <td>{% if project.repo_url %}<a href="{{ project.repo_url }}" target="_blank" rel="noopener">repo</a>{% endif %}</td>
         <td class="actions">
           <a href="{{ url_for('admin.edit_project', project_id=project.id) }}">Editar</a>
-          <form method="post" action="{{ url_for('admin.delete_project', project_id=project.id) }}" onsubmit="return confirm('¿Borrar {{ project.title }}?');">
+          <form method="post" action="{{ url_for('admin.delete_project', project_id=project.id) }}" data-confirm="¿Borrar {{ project.title }}?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="danger">Borrar</button>
           </form>

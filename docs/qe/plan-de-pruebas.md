@@ -73,11 +73,11 @@ Estado: ✅ ya automatizado · ⬜ por automatizar · 👁 manual. Prioridad: A 
 
 | ID | Caso | Resultado esperado | Prio | Estado |
 |---|---|---|---|---|
-| TC-SEC-01 | Cookie de sesión | `HttpOnly`, `Secure` y `SameSite=Lax` (hoy sin `Secure` ni `SameSite`, H4) | A | ⬜ |
-| TC-SEC-02 | Cabeceras de respuesta en producción | `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`/CSP (hoy ausentes, H7) | M | ⬜ |
+| TC-SEC-01 | Cookie de sesión | `HttpOnly`, `Secure` y `SameSite=Lax` (hoy sin `Secure` ni `SameSite`, H4) | A | ✅ (QAP-21) |
+| TC-SEC-02 | Cabeceras de respuesta en producción | `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`/CSP (hoy ausentes, H7) | M | ✅ (QAP-21; en el repo con pruebas, en producción con el paso del deploy) |
 | TC-DEP-01 | **Las pruebas corren antes del deploy** | Un test rojo bloquea el despliegue (hoy no, H1) | A | ⬜ |
 | TC-DEP-02 | Smoke post-deploy | `/`, `/api/projects`, `/demos`, `/en/` y `/admin/login` responden | M | ⬜ (hoy 2 de 5) |
-| TC-DEP-03 | HTTP redirige a HTTPS | 301 | M | 👁 (verificado a mano el 2026-10-09) |
+| TC-DEP-03 | HTTP redirige a HTTPS | 301 | M | ✅ (QAP-21: paso "Security headers" del deploy; verificado a mano el 2026-10-09) |
 
 ### Capa de IA (HU-07, futura)
 

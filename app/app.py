@@ -25,6 +25,18 @@ def _env_int(name: str, default: int) -> int:
     return value
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("0", "false", "no", "off"):
+        return False
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    log.warning("%s=%r no es un booleano reconocido: se usa %s", name, raw, default)
+    return default
+
+
 def create_app():
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
@@ -35,6 +47,16 @@ def create_app():
     # "server closed the connection unexpectedly" en vez de reconectar solo.
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
     app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+
+    # Cookies de sesión (QAP-21, H4): HttpOnly (el JS no puede leerla), Secure (solo viaja por HTTPS) y SameSite=Lax
+    # (el navegador no la manda en POST iniciados desde OTRO sitio: segunda barrera contra CSRF, además del token).
+    # Secure se puede apagar con SESSION_COOKIE_SECURE=0 SOLO para desarrollo local por http; en producción no se
+    # define y queda activo. La cookie "recordarme" de Flask-Login (hoy sin usar) lleva las mismas restricciones.
+    secure = _env_bool("SESSION_COOKIE_SECURE", True)
+    for prefix in ("SESSION", "REMEMBER"):
+        app.config[f"{prefix}_COOKIE_SECURE"] = secure
+        app.config[f"{prefix}_COOKIE_HTTPONLY"] = True
+        app.config[f"{prefix}_COOKIE_SAMESITE"] = "Lax"
 
     db.init_app(app)
 
