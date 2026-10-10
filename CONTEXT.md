@@ -6,33 +6,34 @@
 
 ---
 
-## 0. RETOMAR AQUÍ (estado al cierre de la sesión del 2026-10-09, tras la v3 de QAP-17)
+## 0. RETOMAR AQUÍ (estado al cierre de la semana 13, 2026-10-10)
 
 > **Regla de oro para la próxima sesión:** las cifras y estados de esta sección eran ciertos al cerrar. **Verifícalos con la herramienta antes de repetirlos** (`git status`, JQL de Jira, `pytest --collect-only`). Ya hubo errores por citar de memoria (ver "Errores de proceso" en `CLAUDE.md`).
 
 ### 0.1 Dónde estamos
 
-Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** (documentación avanzada + demos de IA), semana 14 (lanzamiento) pendiente. Dentro de la semana 13:
+Plan de estudio de 14 semanas: **semanas 4 a 13 completas**; la **semana 14 (lanzamiento)** es la que sigue. Resumen completo con cifras, hallazgos y riesgos: [`docs/reporte-cierre-semana-13.md`](docs/reporte-cierre-semana-13.md).
+
+**Jira (verificado el 2026-10-10): 20 de 21 tickets en Done**; solo queda QAP-16 (comparativa de modelos de IA, opcional, no hecho). Lo de la semana 13:
 
 | Pieza | Estado |
 |---|---|
-| Enfoque de IA "general", no de una sola marca (QAP-11) | ✅ hecho y en producción |
-| Demos con ejemplos reales pregenerados, ES/EN (QAP-12) | ✅ en producción (`/demos`) |
-| Capa de proveedor intercambiable + límites + respaldo (QAP-13) | ✅ desplegada, **apagada** (`AI_PROVIDER` vacío y sin endpoint) |
-| Elección de proveedor con páginas oficiales + llamada real (QAP-14) | ✅ **Groq** (`openai/gpt-oss-20b`, plan gratis); Andres lo pasó a Done |
-| Mejora de prompts, limpieza de salida y truncado (QAP-17) | ✅ **medido 3 veces (14 → 21 → 21 de 30) y en In Review**; los cambios de la v3 están sin commitear |
-| Activar el modo en vivo (QAP-18) | ✅ **ENCENDIDO en producción el 2026-10-10 y verificado** (3 demos reales contra Groq en 1,2-2,2 s; el texto enviado no aparece en los logs de `app` ni de Nginx); falta ver el 429 real |
-| Documentación avanzada de QE (QAP-15) | 🟡 **4 documentos escritos en `docs/qe/` (sin commitear); en In Review, pendiente de tu revisión** |
+| Enfoque de IA general, demos pregenerados, capa de proveedor, Groq elegido (QAP-11 a 14) | ✅ Done |
+| Prompts y salida del modo en vivo, medidos 3 veces: **14 → 21 → 21 de 30** (QAP-17) | ✅ Done |
+| Documentación avanzada de QE en `docs/qe/` (QAP-15) | ✅ Done |
+| Puerta de pruebas antes del deploy (QAP-19), API y login con pruebas y correcciones (QAP-20), cookies y cabeceras (QAP-21) | ✅ Done, desplegados y verificados |
+| **Modo en vivo de los demos encendido con Groq** (QAP-18) | ✅ Done, en producción |
+| Casos de estudio de API, CI/CD y BDD (QAP-9) | ✅ Done, en producción |
 
-### 0.2 Qué está en producción (`https://andresqe.duckdns.org`)
+### 0.2 Qué está en producción (`https://andresqe.duckdns.org`, verificado el 2026-10-10)
 
-Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejemplos (3 demos × 2) **etiquetados como "no en vivo"** y sin ningún cuadro de entrada; panel admin; API `/api/projects`; deploy automático por GitHub Actions; HTTPS con renovación automática. **La capa de IA está en el servidor pero no está conectada a nada: no se hace ninguna llamada a ningún proveedor.** El último commit de Andres es `c1efe70`.
+Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejemplos pregenerados **y** un cuadro "Pruébalo con tu propio caso" por demo, que genera en vivo con **Groq (`openai/gpt-oss-20b`)**, con etiqueta del modelo, advertencia de borrador sin verificar, aviso de privacidad, límites (5 por visitante cada 10 min, 70 al día) y respaldo a los ejemplos; **4 casos de estudio** (UI, API, CI/CD, BDD); panel admin con límite de intentos de login; API `/api/projects` validada; cookies `Secure`/`HttpOnly`/`SameSite=Lax`; 6 cabeceras de seguridad y CSP **solo en modo informe**; Gunicorn con 1 proceso y 4 hilos; deploy automático por GitHub Actions **con las pruebas como puerta**; HTTPS con renovación automática. La clave de Groq vive solo en `/home/ubuntu/qa-portfolio-server/.env` del servidor (backup en `~/env-backup-<fecha>`, fuera del repo).
 
-### 0.3 Estado de git (a verificar al retomar)
+### 0.3 Estado de git y de las pruebas (a verificar al retomar)
 
-- **`qa-automation-portfolio`:** último commit `9849c29`. Sin commitear: solo `CONTEXT.md` (la sección 0 de ese repo). Se borraron 4 carpetas vacías de la raíz (`admin_test`, `booking_battery`, `features`, `reports`; git no las rastreaba).
-- **`qa-portfolio-server`:** el trabajo base de QAP-17 ya está commiteado (`f1783e4`). **Sin commitear (v3 y documentación):** `app/ai_service.py` (tres reglas nuevas de prompt y limpieza de cercos de código y acentos graves), `app/tests/test_output_and_prompts.py` (+10 pruebas), `docs/rubrica-medicion-ia.md` (resultados v2, v3 y seguimiento), y este `CONTEXT.md` y el `README.md`. Al pushear se dispara el deploy (hay `.py`), pero **no cambia nada visible**: el modo en vivo sigue apagado.
-- **Pruebas:** la capa de IA suma **162** (16 + 50 + 62 + 34); `test_ai_limits`, `test_ai_service`, `test_groq_provider`, `test_output_and_prompts`, `test_score_measure` y `test_ci_status`: **200 pasan y 2 omitidas a propósito**. **Suite completa ejecutada el 2026-10-09 en un venv limpio con `app/requirements.txt` + `pytest` + `requests`: 222 pasan y 3 omitidas (225), incluido `test_demos.py`.** Ese venv vive en la carpeta temporal de la sesión; para repetirlo: `python -m venv <ruta>` e instalar esas dependencias (el venv de `qa-automation-portfolio` no trae Flask).
+- **`qa-portfolio-server`:** `main` en `cd27c6c` (merge del PR 11), todo desplegado. Sin commitear: `CONTEXT.md` y `docs/reporte-cierre-semana-13.md`. Puede quedar una rama local `qap-9-casos-de-estudio` ya fusionada (borrable).
+- **`qa-automation-portfolio`:** último commit `9849c29`. Sin commitear: solo `CONTEXT.md` (la sección 0 de ese repo).
+- **Pruebas:** **470 = 460 pasan + 10 omitidas a propósito** (3 de red/Groq y 7 de humo contra PostgreSQL, que necesitan `-m network`, `-m groq_live` o `-m postgres`), en 15 archivos. Para correrlas en esta máquina hace falta un intérprete con `app/requirements-dev.txt` (el venv de `qa-automation-portfolio` no trae Flask); en CI corren con cada PR y cada push.
 
 ### 0.4 QAP-17: resultado de la medición (cerrado el 2026-10-09, en In Review)
 
@@ -51,21 +52,20 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 - **Sesgos declarados:** puntúa Claude con una rúbrica que escribió Claude; la regla del diagnóstico de la v3 se escribió viendo el fallo de la v2.
 - **Decisión tomada con Andres:** dejar de iterar prompts (6 ejemplos y un muestreo no justifican seguir, y se corre el riesgo de ajustar al examen). Comentario de resultados puesto en QAP-17 y movido a In Review; **Andres decide cuándo pasa a Done**.
 
-### 0.5 Jira (estado verificado el 2026-10-09; `QAP`, ver `CLAUDE.md` para cloudId y transiciones)
+### 0.5 Jira (estado verificado el 2026-10-10; `QAP`, ver `CLAUDE.md` para cloudId y transiciones)
 
 | Estado | Tickets |
 |---|---|
-| **In Progress** | QAP-9 (casos de estudio de API, CI/CD y BDD: hechos y probados en local, **sin commitear**, rama `qap-9-casos-de-estudio`; falta PR y verlos en producción) |
-| **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor), QAP-17 (mejorar prompts y salida, medido), **QAP-15** (documentación avanzada de QE, 4 documentos en `docs/qe/`), **QAP-18** (modo en vivo de los demos: endpoint, formulario, avisos, Gunicorn con hilos y variables en el compose; **sin commitear**, en la rama `qap-18-modo-en-vivo`; apagado hasta poner `AI_PROVIDER` y la clave en el `.env` del servidor), **QAP-21** (cookies `Secure`/`SameSite=Lax` y cabeceras en Nginx, CSP solo en modo informe, paso "Security headers" en el deploy: probado en local y en un navegador real contra una copia local; **sin commitear; nada de Nginx se ha probado con `nginx -t` ni en producción**), **QAP-20** (pruebas y correcciones de la API y el login: 98 pruebas nuevas, validación, 401 JSON, 415, límite de intentos 429; **commiteada (`76c6cf2`); las 7 pruebas de humo contra PostgreSQL real pasaron en CI (H5 confirmado) y producción ya responde 401 JSON a una escritura sin sesión**; sigue sin comprobarse el 429 en producción), **QAP-19** (puerta de pruebas antes del deploy: **commiteada (`76c6cf2`) y verificada en GitHub en el camino verde** (run 37997389897: Tests y Deploy en success); **verificado también el camino rojo el 2026-10-09**: un PR con una prueba rota dejó `Tests` en failure y `Deploy` en skipped (run 38002304971; el PR de prueba debe cerrarse SIN merge y su rama borrarse). Límite: el log no es público, así que no se vio el nombre de la prueba que falló) |
+| **In Progress / In Review** | — |
 | **To Do** | QAP-16 (opcional: comparativa de modelos) |
-| **Done** | QAP-2, 3, 4, 5, 7, 8, 11, 12, 13, 14 |
+| **Done** | QAP-1 a 15 y QAP-17 a 21 (20 tickets) |
 
 ### 0.6 Qué sigue, en orden recomendado
 
-1. **Andres:** commit y push de la v3 de QAP-17 y de `docs/qe/` + README + CONTEXT (la suite completa ya se verificó: 222 pasan, 3 omitidas); decidir si QAP-17 pasa a Done y revisar QAP-15.
-2. **QAP-18 (modo en vivo): encendido el 2026-10-10** con la clave de servidor puesta por Andres en `/home/ubuntu/qa-portfolio-server/.env` (`AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `AI_API_KEY`); backup del `.env` en `~/env-backup-<fecha>` (fuera del repo). Para APAGARLO: `AI_PROVIDER=` vacío en ese `.env` y `docker compose up -d` (el interruptor definitivo es revocar la clave en la consola de Groq). **Pendiente:** el 429 real en producción (agotar el cupo de una IP la bloquea 10 min) y la observación de que el servicio no deja líneas INFO de uso en los logs (el logger de producción no está en INFO; mejora opcional, esas líneas no llevan texto del visitante).
-3. **Otros pendientes de calidad (de `docs/qe`):** enforzar la CSP (renombrar `Content-Security-Policy-Report-Only`) tras mirar el panel con sesión; el 429 del login en producción.
-4. **Semana 14 (lanzamiento):** rate limiting también en `/admin/login`, backup automático de PostgreSQL, snapshot de Oracle, validación con el prompt de "recruiter senior QA", publicar en LinkedIn. Backlog completo en la sección 3e.
+1. **Andres:** commit de `CONTEXT.md` y del reporte de cierre (solo documentación, no dispara deploy), y el de `CONTEXT.md` en `qa-automation-portfolio`.
+2. **Semana 14 (lanzamiento):** ✅ el rate limiting de `/admin/login` ya se hizo (QAP-20); **pendiente:** backup automático de PostgreSQL (hoy no hay copia de seguridad de la base), snapshot semanal de Oracle desde la consola, validación con el prompt de "recruiter senior QA", publicar en LinkedIn y poner la URL en el CV. Del backlog del sitio (sección 3e): verificar que cada cifra sea defendible, mantener `JOBS` sincronizado con el CV, sumar lo de las semanas 8-12 y decidir sobre el correo en texto plano.
+3. **Calidad:** enforzar la CSP (renombrar `Content-Security-Policy-Report-Only`) tras mirar el panel con sesión iniciada; revisar la traducción al inglés de los casos de estudio; valorar un log de uso del modo en vivo (el logger de producción no está en INFO, así que hoy no aparece); mirar el primer run de CI después del **2026-10-19** (Node 20 en desuso y `ubuntu-latest` pasa a Ubuntu 26).
+4. **Apagar el modo en vivo si hace falta:** `AI_PROVIDER=` vacío en el `.env` del servidor y `docker compose up -d` (el interruptor definitivo es revocar la clave en la consola de Groq).
 
 ### 0.7 Decisiones tomadas (no reabrir sin hablarlo con Andres)
 
@@ -229,7 +229,7 @@ Cosas a ajustar, notar o mejorar a medida que avancen las semanas que quedan. Re
 ### Contenido y credibilidad (antes del lanzamiento, semana 14)
 - [ ] **Verificar que cada cifra del sitio sea defendible en entrevista.** Los KPIs salen de la HV, no de este repo: ciclo de regresión 1h → 24m (−60%), 75% de flujos críticos cubiertos (+60% de regresión automatizada), −15% defectos en producción, 6+/4+ años. Un entrevistador puede preguntar el "cómo" de cada una; si alguna es estimada, decirlo en la web o suavizarla.
 - [ ] **Mantener `JOBS` en `app/content.py` sincronizado con el PDF del CV** (`app/static/cv/CV_Andres_Gonzalez.pdf`). Son dos copias de la misma información: si cambia una y no la otra, el sitio se contradice solo.
-- [x] ~~**Casos de estudio faltantes: API, CI/CD y BDD**~~ **hechos en QAP-9 (2026-10-10, rama `qap-9-casos-de-estudio`, sin commitear)**; texto original: (hoy dicen "pronto"; solo existe el de UI en `case_ui.html`). Candidato para generarlos con ayuda de Claude en semana 13, junto con la documentación avanzada.
+- [x] ~~**Casos de estudio faltantes: API, CI/CD y BDD**~~ **hechos y desplegados en QAP-9 (2026-10-10, merge del PR 11)**; texto original: (hoy dicen "pronto"; solo existe el de UI en `case_ui.html`). Candidato para generarlos con ayuda de Claude en semana 13, junto con la documentación avanzada.
 - [ ] **Sumar al portafolio lo de las semanas 8-12** (servidor propio, deploy automático, routines de CI y de review de PRs, flujos con MCP). Hoy la tabla de proyectos solo tiene las semanas 4-7; "Este sitio" cubre el deploy pero no las routines.
 
 ### Comportamiento del sitio
