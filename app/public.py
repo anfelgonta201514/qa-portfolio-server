@@ -3,6 +3,7 @@ from pathlib import Path
 
 from flask import Blueprint, abort, current_app, render_template, request, send_from_directory, url_for
 
+import case_studies
 import ci_status
 import content
 import demo_content
@@ -88,6 +89,33 @@ def _case_ui(lang):
     )
 
 
+def _pager_entry(key, lang):
+    """Enlace (href y etiqueta) a otro caso de estudio, a la experiencia o a los demos."""
+    href = content.PAGES[key][lang]
+    if key == "case_ui":
+        return {"href": href, "label": content.T[lang]["case_ui_short"]}
+    if key in case_studies.CASES[lang]:
+        return {"href": href, "label": case_studies.CASES[lang][key]["short"]}
+    return {"href": href, "label": content.T[lang]["nav_demos" if key == "demos" else "nav_experience"]}
+
+
+def _case(key, lang):
+    """Caso de estudio de API, CI/CD o BDD (misma plantilla, contenido en case_studies.py)."""
+    ci = ci_status.get_status()
+    tag = case_studies.CI_TAG[key]
+    order = case_studies.ORDER
+    i = order.index(key)
+    prev_key = order[i - 1] if i > 0 else "experience"
+    next_key = order[i + 1] if i + 1 < len(order) else "demos"
+    return _render(
+        key, lang, "site/case.html",
+        c=case_studies.CASES[lang][key],
+        ci=ci,
+        ci_state=ci["states"].get(tag, ci_status.UNKNOWN),
+        pager={"prev": _pager_entry(prev_key, lang), "next": _pager_entry(next_key, lang)},
+    )
+
+
 def _demos(lang, live=None):
     """Página de demos. `live` es el resultado de un intento en vivo (None al abrir la página)."""
     service = current_app.extensions["demo_service"]
@@ -152,7 +180,12 @@ def favicon():
     return send_from_directory(Path(current_app.static_folder) / "img", "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
-VIEWS = {"overview": _overview, "experience": _experience, "case_ui": _case_ui, "demos": _demos}
+VIEWS = {
+    "overview": _overview, "experience": _experience, "case_ui": _case_ui, "demos": _demos,
+    "case_api": lambda lang: _case("case_api", lang),
+    "case_ci": lambda lang: _case("case_ci", lang),
+    "case_bdd": lambda lang: _case("case_bdd", lang),
+}
 
 # Una regla por página e idioma (ej. /experiencia y /en/experience), con
 # endpoints public.<página>_<idioma>.

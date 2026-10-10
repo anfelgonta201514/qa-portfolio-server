@@ -14,6 +14,10 @@ PAGES = {
     "overview": {"es": "/", "en": "/en/"},
     "experience": {"es": "/experiencia", "en": "/en/experience"},
     "case_ui": {"es": "/proyectos/ui-playwright", "en": "/en/projects/ui-playwright"},
+    # Casos de estudio de API, CI/CD y BDD (QAP-9); su contenido vive en case_studies.py.
+    "case_api": {"es": "/proyectos/api-pytest", "en": "/en/projects/api-pytest"},
+    "case_ci": {"es": "/proyectos/ci-cd", "en": "/en/projects/ci-cd"},
+    "case_bdd": {"es": "/proyectos/bdd", "en": "/en/projects/bdd"},
     "demos": {"es": "/demos", "en": "/en/demos"},
 }
 
@@ -26,6 +30,9 @@ EMAIL = "andresfelgonta@gmail.com"
 # enlazan directo a su código en GitHub.
 CASE_STUDIES = {
     "https://github.com/anfelgonta201514/qa-automation-portfolio/tree/master/ui-tests/booking-flow": "case_ui",
+    "https://github.com/anfelgonta201514/qa-automation-portfolio/tree/master/api-tests/restful-booker": "case_api",
+    "https://github.com/anfelgonta201514/qa-automation-portfolio/blob/master/.github/workflows/tests.yml": "case_ci",
+    "https://github.com/anfelgonta201514/qa-automation-portfolio": "case_bdd",
 }
 
 T = {
@@ -137,8 +144,8 @@ T = {
         "decisions_title": "Decisiones clave",
         "run_title": "Cómo corre",
         "snippet_note": "Escenario real de ui-tests/booking-flow/features/booking.feature.",
-        "result_tests": "Escenarios en la suite",
-        "result_tests_sub": "15 casos con las baterías de Excel",
+        "result_tests": "Casos de prueba en la suite",
+        "result_tests_sub": "6 escenarios + 9 filas de las baterías de Excel",
         "result_browsers": "Navegadores por ejecución",
         "result_browsers_sub": "matrix en GitHub Actions",
         "result_time": "Tiempo del pipeline en CI",
@@ -249,8 +256,8 @@ T = {
         "decisions_title": "Key decisions",
         "run_title": "How it runs",
         "snippet_note": "Real scenario from ui-tests/booking-flow/features/booking.feature (written in Spanish).",
-        "result_tests": "Scenarios in the suite",
-        "result_tests_sub": "15 cases with the Excel data batteries",
+        "result_tests": "Test cases in the suite",
+        "result_tests_sub": "6 scenarios + 9 rows from the Excel data batteries",
         "result_browsers": "Browsers per run",
         "result_browsers_sub": "GitHub Actions matrix",
         "result_time": "Pipeline time in CI",

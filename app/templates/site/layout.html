@@ -39,7 +39,7 @@
 
     <nav class="side-nav" aria-label="{{ t.menu }}">
       {% for key, label, ico, href, soon in nav %}
-      <a href="{{ href }}"{% if key == page %} aria-current="page"{% endif %}>
+      <a href="{{ href }}"{% if key == page or (key == "case_ui" and page.startswith("case_")) %} aria-current="page"{% endif %}>
         {{ icon(ico) }}<span>{{ label }}</span>{% if soon %}<span class="soon">{{ t.soon }}</span>{% endif %}
       </a>
       {% endfor %}
