@@ -21,7 +21,7 @@ Plan de estudio de 14 semanas: **semanas 4 a 12 completas, semana 13 en curso** 
 | Capa de proveedor intercambiable + límites + respaldo (QAP-13) | ✅ desplegada, **apagada** (`AI_PROVIDER` vacío y sin endpoint) |
 | Elección de proveedor con páginas oficiales + llamada real (QAP-14) | ✅ **Groq** (`openai/gpt-oss-20b`, plan gratis); Andres lo pasó a Done |
 | Mejora de prompts, limpieza de salida y truncado (QAP-17) | ✅ **medido 3 veces (14 → 21 → 21 de 30) y en In Review**; los cambios de la v3 están sin commitear |
-| Activar el modo en vivo (QAP-18) | 🟡 **construido y probado, APAGADO: falta la clave de servidor (la pone Andres) y la verificación en producción** |
+| Activar el modo en vivo (QAP-18) | ✅ **ENCENDIDO en producción el 2026-10-10 y verificado** (3 demos reales contra Groq en 1,2-2,2 s; el texto enviado no aparece en los logs de `app` ni de Nginx); falta ver el 429 real |
 | Documentación avanzada de QE (QAP-15) | 🟡 **4 documentos escritos en `docs/qe/` (sin commitear); en In Review, pendiente de tu revisión** |
 
 ### 0.2 Qué está en producción (`https://andresqe.duckdns.org`)
@@ -55,15 +55,15 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 
 | Estado | Tickets |
 |---|---|
-| **In Progress** | — |
+| **In Progress** | QAP-9 (casos de estudio de API, CI/CD y BDD: hechos y probados en local, **sin commitear**, rama `qap-9-casos-de-estudio`; falta PR y verlos en producción) |
 | **In Review** (Andres decide cuándo pasar a Done) | QAP-1 (Bug de prueba del flujo), QAP-6 (reporte de sprint), QAP-10 (logs del servidor), QAP-17 (mejorar prompts y salida, medido), **QAP-15** (documentación avanzada de QE, 4 documentos en `docs/qe/`), **QAP-18** (modo en vivo de los demos: endpoint, formulario, avisos, Gunicorn con hilos y variables en el compose; **sin commitear**, en la rama `qap-18-modo-en-vivo`; apagado hasta poner `AI_PROVIDER` y la clave en el `.env` del servidor), **QAP-21** (cookies `Secure`/`SameSite=Lax` y cabeceras en Nginx, CSP solo en modo informe, paso "Security headers" en el deploy: probado en local y en un navegador real contra una copia local; **sin commitear; nada de Nginx se ha probado con `nginx -t` ni en producción**), **QAP-20** (pruebas y correcciones de la API y el login: 98 pruebas nuevas, validación, 401 JSON, 415, límite de intentos 429; **commiteada (`76c6cf2`); las 7 pruebas de humo contra PostgreSQL real pasaron en CI (H5 confirmado) y producción ya responde 401 JSON a una escritura sin sesión**; sigue sin comprobarse el 429 en producción), **QAP-19** (puerta de pruebas antes del deploy: **commiteada (`76c6cf2`) y verificada en GitHub en el camino verde** (run 37997389897: Tests y Deploy en success); **verificado también el camino rojo el 2026-10-09**: un PR con una prueba rota dejó `Tests` en failure y `Deploy` en skipped (run 38002304971; el PR de prueba debe cerrarse SIN merge y su rama borrarse). Límite: el log no es público, así que no se vio el nombre de la prueba que falló) |
-| **To Do** | QAP-9 (casos de estudio API/CI-CD/BDD), QAP-16 (opcional: comparativa de modelos) |
+| **To Do** | QAP-16 (opcional: comparativa de modelos) |
 | **Done** | QAP-2, 3, 4, 5, 7, 8, 11, 12, 13, 14 |
 
 ### 0.6 Qué sigue, en orden recomendado
 
 1. **Andres:** commit y push de la v3 de QAP-17 y de `docs/qe/` + README + CONTEXT (la suite completa ya se verificó: 222 pasan, 3 omitidas); decidir si QAP-17 pasa a Done y revisar QAP-15.
-2. **QAP-18 (modo en vivo): lo construido está en la rama `qap-18-modo-en-vivo`, sin commitear.** Pasos para cerrarlo, en orden: (a) Andres revisa, commitea y abre el PR (corre `Tests`; el modo en vivo viene APAGADO, así que el merge no cambia nada visible, salvo Gunicorn con hilos); (b) tras el deploy, mirar que el sitio siga igual (el contenedor arranca con `--workers=1 --worker-class=gthread --threads=4`: **no verificado hasta entonces**); (c) **Andres crea en la consola de Groq una clave PROPIA del servidor, distinta de la de pruebas, y la escribe solo en el `.env` del servidor** (`AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `AI_API_KEY=...`, luego `docker compose up -d`); (d) verificar en producción una prueba por demo, el 429 y que el log no contenga el texto enviado (`deploy/logs.sh app`). Para apagarlo: `AI_PROVIDER` vacío + `docker compose up -d`.
+2. **QAP-18 (modo en vivo): encendido el 2026-10-10** con la clave de servidor puesta por Andres en `/home/ubuntu/qa-portfolio-server/.env` (`AI_PROVIDER=groq`, `AI_MODEL=openai/gpt-oss-20b`, `AI_API_KEY`); backup del `.env` en `~/env-backup-<fecha>` (fuera del repo). Para APAGARLO: `AI_PROVIDER=` vacío en ese `.env` y `docker compose up -d` (el interruptor definitivo es revocar la clave en la consola de Groq). **Pendiente:** el 429 real en producción (agotar el cupo de una IP la bloquea 10 min) y la observación de que el servicio no deja líneas INFO de uso en los logs (el logger de producción no está en INFO; mejora opcional, esas líneas no llevan texto del visitante).
 3. **Otros pendientes de calidad (de `docs/qe`):** enforzar la CSP (renombrar `Content-Security-Policy-Report-Only`) tras mirar el panel con sesión; el 429 del login en producción.
 4. **Semana 14 (lanzamiento):** rate limiting también en `/admin/login`, backup automático de PostgreSQL, snapshot de Oracle, validación con el prompt de "recruiter senior QA", publicar en LinkedIn. Backlog completo en la sección 3e.
 
@@ -229,7 +229,7 @@ Cosas a ajustar, notar o mejorar a medida que avancen las semanas que quedan. Re
 ### Contenido y credibilidad (antes del lanzamiento, semana 14)
 - [ ] **Verificar que cada cifra del sitio sea defendible en entrevista.** Los KPIs salen de la HV, no de este repo: ciclo de regresión 1h → 24m (−60%), 75% de flujos críticos cubiertos (+60% de regresión automatizada), −15% defectos en producción, 6+/4+ años. Un entrevistador puede preguntar el "cómo" de cada una; si alguna es estimada, decirlo en la web o suavizarla.
 - [ ] **Mantener `JOBS` en `app/content.py` sincronizado con el PDF del CV** (`app/static/cv/CV_Andres_Gonzalez.pdf`). Son dos copias de la misma información: si cambia una y no la otra, el sitio se contradice solo.
-- [ ] **Casos de estudio faltantes: API, CI/CD y BDD** (hoy dicen "pronto"; solo existe el de UI en `case_ui.html`). Candidato para generarlos con ayuda de Claude en semana 13, junto con la documentación avanzada.
+- [x] ~~**Casos de estudio faltantes: API, CI/CD y BDD**~~ **hechos en QAP-9 (2026-10-10, rama `qap-9-casos-de-estudio`, sin commitear)**; texto original: (hoy dicen "pronto"; solo existe el de UI en `case_ui.html`). Candidato para generarlos con ayuda de Claude en semana 13, junto con la documentación avanzada.
 - [ ] **Sumar al portafolio lo de las semanas 8-12** (servidor propio, deploy automático, routines de CI y de review de PRs, flujos con MCP). Hoy la tabla de proyectos solo tiene las semanas 4-7; "Este sitio" cubre el deploy pero no las routines.
 
 ### Comportamiento del sitio

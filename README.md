@@ -80,6 +80,9 @@ Diseño tipo dashboard (menú lateral + header) con páginas separadas en vez de
 | Overview | `/` | `/en/` |
 | Experiencia | `/experiencia` | `/en/experience` |
 | Caso de estudio UI | `/proyectos/ui-playwright` | `/en/projects/ui-playwright` |
+| Caso de estudio API | `/proyectos/api-pytest` | `/en/projects/api-pytest` |
+| Caso de estudio CI/CD | `/proyectos/ci-cd` | `/en/projects/ci-cd` |
+| Caso de estudio BDD | `/proyectos/bdd` | `/en/projects/bdd` |
 
 - **Idioma por URL**, no por cookie ni JS: el selector ES/EN del header enlaza a la misma página en el otro idioma, y cada página declara su par con `<link rel="alternate" hreflang>` para que los buscadores indexen las dos versiones.
 - **Textos en `app/content.py`**, nunca sueltos en los templates — una frase se cambia en los dos idiomas en el mismo lugar.
@@ -88,6 +91,14 @@ Diseño tipo dashboard (menú lateral + header) con páginas separadas en vez de
 - **Logo / favicon**: monograma AG con check (variante "Minimalista"), en `app/static/img/` — `favicon.ico` (16–64px, también servido en `/favicon.ico`), `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png` y `logo-mark.png` (header). Paleta: fondo `#0B0F14`, logo `#F1F5F9`, check/éxito `#14B8A6` (mismo verde que usa el sitio para estados OK).
 - **Contacto por correo**: los botones "Escríbeme" / "Hablemos" son `mailto:` normales (funcionan sin JS); con JS abren un `<dialog>` para elegir Gmail, Outlook web, la app de correo del sistema o copiar la dirección.
 - "Este sitio" y "Demos IA" están en el menú como **"pronto"**: hoy son secciones del Overview, sus páginas propias vienen después (los demos son semana 13).
+
+## Casos de estudio (QAP-9)
+
+Los cuatro proyectos del portafolio tienen su caso de estudio (UI, API, CI/CD y BDD); las tarjetas del Overview enlazan a ellos en lugar de decir "pronto", y se recorren con anterior/siguiente (UI → API → CI/CD → BDD → Demos). Los de API, CI/CD y BDD comparten la plantilla `site/case.html` y su contenido (ES y EN) vive en [`app/case_studies.py`](app/case_studies.py); el de UI sigue con la suya.
+
+**Estructura de cada caso:** problema, enfoque, decisiones clave, cómo corre (con un fragmento real), resultado (cifras), lo que costó o falló, y **límites** (lo que no cubre). Lo que se afirma sale de `qa-automation-portfolio` y se comprobó el 2026-10-10: los fragmentos son **copia literal** de archivos de ese repo, las cifras se midieron (10 tests de API en 3,16 s en una corrida local; 6 comportamientos de la API que no siguen REST; 4 jobs por ejecución; 6-11 min por ejecución en las últimas 8 de GitHub; 2 escenarios BDD), y el historial del CI se leyó de la API pública de GitHub. Las pruebas (`app/tests/test_case_studies.py`) comprueban, cuando el repo hermano está en la carpeta de al lado, que cada fragmento sigue siendo copia literal, que los conteos coinciden y que cada enlace a GitHub apunta a una ruta que existe; si no está (en CI), se omiten. **Si cambia el repo de tests, hay que volver a medir.**
+
+**Correcciones de paso:** la página de UI decía "8" escenarios con la leyenda "15 casos"; ahora dice 15 casos (6 escenarios + 9 filas de las baterías de Excel, contados con `pytest --collect-only`). Y los cuatro casos de estudio medían entre 455 y 732 px de ancho en un móvil de 375 (un fragmento de código largo ensanchaba la página; las rejillas de una columna usaban `1fr` en lugar de `minmax(0, 1fr)`): ahora caben, el código se parte, y la tabla de la API se convierte en tarjetas.
 
 ## Panel admin
 
