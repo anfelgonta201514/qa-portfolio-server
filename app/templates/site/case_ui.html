@@ -56,13 +56,13 @@
 </section>
 
 <section class="three-col">
-  <div class="card kpi"><span class="kpi-label">{{ t.result_tests }}</span><span class="kpi-value">8</span><span class="kpi-sub">{{ t.result_tests_sub }}</span></div>
+  <div class="card kpi"><span class="kpi-label">{{ t.result_tests }}</span><span class="kpi-value">15</span><span class="kpi-sub">{{ t.result_tests_sub }}</span></div>
   <div class="card kpi"><span class="kpi-label">{{ t.result_browsers }}</span><span class="kpi-value">3</span><span class="kpi-sub">{{ t.result_browsers_sub }}</span></div>
   <div class="card kpi"><span class="kpi-label">{{ t.result_time }}</span><span class="kpi-value">~9 min</span><span class="kpi-sub">{{ t.result_time_sub }}</span></div>
 </section>
 
 <nav class="pager">
   <a href="{{ urls.experience }}"><span class="mono muted small">{{ t.prev }}</span><strong>{{ t.nav_experience }}</strong></a>
-  <a href="{{ links.repo }}/tree/master/api-tests/restful-booker" class="pager-next" target="_blank" rel="noopener noreferrer"><span class="mono muted small">{{ t.next_case_soon }}</span><strong>{{ t.case_api_short }}</strong></a>
+  <a href="{{ urls.case_api }}" class="pager-next"><span class="mono muted small">{{ t.next }}</span><strong>{{ t.case_api_short }}</strong></a>
 </nav>
 {% endblock %}

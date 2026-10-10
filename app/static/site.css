@@ -492,8 +492,8 @@ button.btn { font: inherit; font-weight: 700; background: transparent; cursor: p
   .hero-photo { width: 240px; height: 280px; margin-left: 32px; }
   .hero-photo-bg { width: 220px; height: 220px; }
   .hero-photo img { width: 220px; height: 280px; }
-  .job { grid-template-columns: 1fr; gap: 16px; padding: 24px; }
-  .two-col, .three-col, .case-meta, .project-grid { grid-template-columns: 1fr; }
+  .job { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 24px; }
+  .two-col, .three-col, .case-meta, .project-grid { grid-template-columns: minmax(0, 1fr); }
   .contact { flex-direction: column; align-items: flex-start; padding: 28px; }
   .contact .actions { flex-wrap: wrap; }
   .hero-case, .section.card { padding: 24px; }
@@ -502,7 +502,7 @@ button.btn { font: inherit; font-weight: 700; background: transparent; cursor: p
 }
 
 @media (max-width: 560px) {
-  .kpis { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: minmax(0, 1fr); }
   .topbar { flex-direction: column; align-items: flex-start; padding: 12px 14px; }
 }
 
@@ -543,3 +543,28 @@ button.btn { font: inherit; font-weight: 700; background: transparent; cursor: p
 /* `button.btn` (más arriba) deja los botones transparentes; el principal necesita su color y sin el borde por defecto. */
 button.btn.btn-primary { background: var(--accent); color: var(--bg); border: 0; }
 button.btn.btn-primary:hover:not([disabled]) { background: var(--accent-hover); }
+
+/* ---- Casos de estudio de API, CI/CD y BDD (QAP-9) */
+.findings { width: 100%; border-collapse: collapse; font-size: 15px; }
+.findings th, .findings td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.findings thead th { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.findings tbody th { font-weight: 600; }
+.findings td { color: var(--text-2); }
+/* Sin nowrap: un endpoint largo en monoespaciada debe poder partirse, o la tabla ensancha toda la página en el móvil. */
+.findings th, .findings td { overflow-wrap: anywhere; }
+.card-dashed { padding: 22px 26px; }
+.card-dashed ul { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--text-2); line-height: 1.65; }
+
+/* Móvil: un fragmento de código largo no debe ensanchar toda la página (los casos de estudio medían 660-730 px en un
+   móvil de 375): el bloque hace scroll por dentro y sus contenedores pueden encogerse. */
+.shell > *, .main, .card.section, .card, .two-col > *, .three-col > *, .demo { min-width: 0; }
+pre.code { max-width: 100%; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Móvil: la tabla de la API pasa a tarjetas (una por endpoint) en vez de partir las palabras en columnas estrechas. */
+@media (max-width: 640px) {
+  .findings, .findings tbody, .findings tr, .findings th, .findings td { display: block; }
+  .findings thead { display: none; }
+  .findings tr { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .findings th, .findings td { border: 0; padding: 2px 0; }
+  .findings td::before { content: attr(data-label) ": "; display: block; color: var(--muted); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; font-family: var(--font, inherit); }
+}

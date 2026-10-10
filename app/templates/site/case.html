@@ -1,0 +1,110 @@
+{% extends "site/layout.html" %}
+{% from "site/_ci_badge.html" import ci_badge %}
+
+{# Plantilla común de los casos de estudio de API, CI/CD y BDD (QAP-9). Todo el contenido sale de case_studies.py. #}
+{% block title %}{{ c.short }} · {{ t.html_title }}{% endblock %}
+{% block crumbs %}<a href="{{ urls.overview }}">portfolio</a> / {{ t.crumb_projects }} / <span>{{ c.slug }}</span>{% endblock %}
+
+{% block content %}
+<section class="card hero-case">
+  <div class="row-start">
+    <span class="pill">{{ c.tag }}</span>
+    {{ ci_badge(ci_state, ci, t, prefix="CI ", extra_class="small") }}
+  </div>
+  <h1 class="h1-md">{{ c.h1 }}</h1>
+  <p class="lead">{{ c.lead }}</p>
+  <dl class="case-meta">
+    {% for label, value, href in c.meta %}
+    <div><dt>{{ label }}</dt><dd>{% if href %}<a href="{{ href }}" target="_blank" rel="noopener noreferrer">{{ value }}</a>{% else %}{{ value }}{% endif %}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+<section class="two-col">
+  <div class="card section">
+    <p class="eyebrow">{{ t.problem_label }}</p>
+    <p class="body">{{ c.problem }}</p>
+  </div>
+  <div class="card section">
+    <p class="eyebrow">{{ t.approach_label }}</p>
+    <p class="body">{{ c.approach }}</p>
+  </div>
+</section>
+
+{% if c.table %}
+<section class="card section">
+  <h2>{{ c.table_title }}</h2>
+  <table class="findings">
+    <thead><tr>{% for h in c.table_head %}<th scope="col">{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for endpoint, expected, real in c.table %}
+      <tr><th scope="row" class="mono">{{ endpoint }}</th><td class="mono muted" data-label="{{ c.table_head[1] }}">{{ expected }}</td><td data-label="{{ c.table_head[2] }}">{{ real }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="section">
+  <h2>{{ t.decisions_title }}</h2>
+  <div class="three-col">
+    {% for num, title, why in c.decisions %}
+    <div class="card decision">
+      <span class="mono accent">{{ num }}</span>
+      <strong>{{ title }}</strong>
+      <p>{{ why }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card section">
+  <h2>{{ t.run_title }}</h2>
+  <div class="flow mono">
+    {% for step in c.steps %}
+    <span{% if loop.last %} class="ok"{% endif %}>{{ step }}</span>{% if not loop.last %}<span class="arrow">→</span>{% endif %}
+    {% endfor %}
+  </div>
+  <pre class="code"><code>{{ c.snippet }}</code></pre>
+  <p class="muted small"><a href="{{ c.snippet_href }}" target="_blank" rel="noopener noreferrer">{{ c.snippet_note }}</a></p>
+</section>
+
+<section class="three-col">
+  {% for label, value, sub in c.kpis %}
+  <div class="card kpi"><span class="kpi-label">{{ label }}</span><span class="kpi-value">{{ value }}</span><span class="kpi-sub">{{ sub }}</span></div>
+  {% endfor %}
+</section>
+
+{% if c.struggles %}
+<section class="section">
+  <h2>{{ c.struggles_title }}</h2>
+  <div class="three-col">
+    {% for title, text in c.struggles %}
+    <div class="card decision">
+      <strong>{{ title }}</strong>
+      <p>{{ text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% if c.history %}<p class="muted small">{{ c.history }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% if c.extra %}
+<section class="card section">
+  <h2>{{ c.extra_title }}</h2>
+  <p class="body">{{ c.extra }}</p>
+  <p class="muted small"><a href="{{ c.extra_href }}" target="_blank" rel="noopener noreferrer">{{ c.extra_link }}</a></p>
+</section>
+{% endif %}
+
+<section class="card-dashed section">
+  <h2>{{ c.limits_title }}</h2>
+  <ul>{% for item in c.limits %}<li>{{ item }}</li>{% endfor %}</ul>
+</section>
+
+<nav class="pager">
+  <a href="{{ pager.prev.href }}"><span class="mono muted small">{{ t.prev }}</span><strong>{{ pager.prev.label }}</strong></a>
+  <a href="{{ pager.next.href }}" class="pager-next"><span class="mono muted small">{{ t.next }}</span><strong>{{ pager.next.label }}</strong></a>
+</nav>
+{% endblock %}
