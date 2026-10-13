@@ -1,18 +1,18 @@
 # CONTEXT.md — qa-portfolio-server
 
-> Documento de continuidad para retomar este proyecto en cualquier sesión nueva sin perder contexto. Creado el 2026-09-18, última revisión completa el 2026-10-09. Las reglas y convenciones estables viven en [`CLAUDE.md`](CLAUDE.md).
+> Documento de continuidad para retomar este proyecto en cualquier sesión nueva sin perder contexto. Creado el 2026-09-18, última revisión completa el 2026-10-09 (sección 0 actualizada el 2026-10-13 con el backup de PostgreSQL). Las reglas y convenciones estables viven en [`CLAUDE.md`](CLAUDE.md).
 >
 > **Para retomar, leer SOLO la sección 0.** Las secciones 1 a 4 son el registro cronológico de todo lo hecho: sirven para entender el porqué de una decisión, pero **algunas afirmaciones de las secciones 2 y 3 están superadas** y no deben tomarse como estado actual.
 
 ---
 
-## 0. RETOMAR AQUÍ (estado al cierre de la semana 13, 2026-10-10)
+## 0. RETOMAR AQUÍ (semana 13 cerrada el 2026-10-10; semana 14 en curso, backup de PostgreSQL instalado el 2026-10-13)
 
 > **Regla de oro para la próxima sesión:** las cifras y estados de esta sección eran ciertos al cerrar. **Verifícalos con la herramienta antes de repetirlos** (`git status`, JQL de Jira, `pytest --collect-only`). Ya hubo errores por citar de memoria (ver "Errores de proceso" en `CLAUDE.md`).
 
 ### 0.1 Dónde estamos
 
-Plan de estudio de 14 semanas: **semanas 4 a 13 completas**; la **semana 14 (lanzamiento)** es la que sigue. Resumen completo con cifras, hallazgos y riesgos: [`docs/reporte-cierre-semana-13.md`](docs/reporte-cierre-semana-13.md).
+Plan de estudio de 14 semanas: **semanas 4 a 13 completas**; la **semana 14 (lanzamiento) está en curso** y su primera pieza, el **backup de PostgreSQL, quedó instalada y funcionando el 2026-10-13** (ver 0.1b). Resumen completo de la semana 13 con cifras, hallazgos y riesgos: [`docs/reporte-cierre-semana-13.md`](docs/reporte-cierre-semana-13.md).
 
 **Jira (verificado el 2026-10-10): 20 de 21 tickets en Done**; solo queda QAP-16 (comparativa de modelos de IA, opcional, no hecho). Lo de la semana 13:
 
@@ -25,15 +25,24 @@ Plan de estudio de 14 semanas: **semanas 4 a 13 completas**; la **semana 14 (lan
 | **Modo en vivo de los demos encendido con Groq** (QAP-18) | ✅ Done, en producción |
 | Casos de estudio de API, CI/CD y BDD (QAP-9) | ✅ Done, en producción |
 
+### 0.1b Semana 14: backup de PostgreSQL (hecho el 2026-10-13, sin ticket de Jira)
+
+**Hasta entonces no había ninguna copia de la base.** Ahora: [`deploy/backup-db.sh`](deploy/backup-db.sh) (`pg_dump` dentro del contenedor, escribe a `.partial` y solo renombra tras `gzip -t`, tamaño mínimo y el pie de `pg_dump`; rota **7 diarias y 4 semanales**, la del domingo), un timer de systemd diario a las **03:30 UTC** (`deploy/qa-portfolio-backup.service` y `.timer`, con `Persistent=true`) y [`deploy/restore-test.sh`](deploy/restore-test.sh) (restaura el último backup en una base temporal y la borra; nunca toca la real). Documentado en el README ("Backup de PostgreSQL"), con el procedimiento de restauración de emergencia. PR 13, `main` en `36b7110`.
+
+- **Verificado en local con un Postgres 16 real (Docker):** backup, rotación (12 → 7 y 6 → 4), copia semanal de domingo simulada, `restore-test`, backup corrupto (falla y no deja base temporal), contenedor parado (falla sin archivos a medias) y la restauración de emergencia del README tras borrar filas y una tabla. **Esa prueba encontró un fallo real:** con `weekly/` vacío, `ls` devolvía 2 y, con `pipefail`, el script abortaba ya hecho el backup (habría dejado el servicio en `failed` de lunes a sábado). Corregido, con prueba de regresión.
+- **Verificado en el servidor (2026-10-13):** timer activo (próxima ejecución 2026-10-14 03:32 UTC), primer backup real `OK` (1995 bytes, servicio `Succeeded`) y `restore-test OK` (`projects` 4 filas, `users` 1); la API pública devuelve 4 proyectos, igual que las filas restauradas. Las copias viven en `/home/ubuntu/backups/{daily,weekly}`.
+- **Pruebas:** `app/tests/test_backup_config.py`, 18 pruebas que leen los scripts y unidades como texto (sin secretos, falla rápido, sin archivos a medias, rotación, `restore-test` nunca apunta a la base real, timer con `Persistent`); con 10 mutaciones plantadas a propósito, las 10 se detectaron. **No** prueban que `pg_dump` funcione: eso lo demuestra `restore-test.sh`.
+- **Límite que sigue abierto:** las copias están en el **mismo disco** que la base. No protegen si se pierde la instancia (ver 0.6).
+
 ### 0.2 Qué está en producción (`https://andresqe.duckdns.org`, verificado el 2026-10-10)
 
 Sitio multipágina ES/EN con CV y badges de CI **reales**; `/demos` con 6 ejemplos pregenerados **y** un cuadro "Pruébalo con tu propio caso" por demo, que genera en vivo con **Groq (`openai/gpt-oss-20b`)**, con etiqueta del modelo, advertencia de borrador sin verificar, aviso de privacidad, límites (5 por visitante cada 10 min, 70 al día) y respaldo a los ejemplos; **4 casos de estudio** (UI, API, CI/CD, BDD); panel admin con límite de intentos de login; API `/api/projects` validada; cookies `Secure`/`HttpOnly`/`SameSite=Lax`; 6 cabeceras de seguridad y CSP **solo en modo informe**; Gunicorn con 1 proceso y 4 hilos; deploy automático por GitHub Actions **con las pruebas como puerta**; HTTPS con renovación automática. La clave de Groq vive solo en `/home/ubuntu/qa-portfolio-server/.env` del servidor (backup en `~/env-backup-<fecha>`, fuera del repo).
 
 ### 0.3 Estado de git y de las pruebas (a verificar al retomar)
 
-- **`qa-portfolio-server`:** `main` en `cd27c6c` (merge del PR 11), todo desplegado. Sin commitear: `CONTEXT.md` y `docs/reporte-cierre-semana-13.md`. Puede quedar una rama local `qap-9-casos-de-estudio` ya fusionada (borrable).
-- **`qa-automation-portfolio`:** último commit `9849c29`. Sin commitear: solo `CONTEXT.md` (la sección 0 de ese repo).
-- **Pruebas:** **470 = 460 pasan + 10 omitidas a propósito** (3 de red/Groq y 7 de humo contra PostgreSQL, que necesitan `-m network`, `-m groq_live` o `-m postgres`), en 15 archivos. Para correrlas en esta máquina hace falta un intérprete con `app/requirements-dev.txt` (el venv de `qa-automation-portfolio` no trae Flask); en CI corren con cada PR y cada push.
+- **`qa-portfolio-server`:** `main` en `36b7110` (merge del PR 13, backup), desplegado (run de Deploy en success). Las ramas viejas ya se borraron; solo queda `main`. El cierre de la semana 13 (`CONTEXT.md` y `docs/reporte-cierre-semana-13.md`) llegó a `main` por cherry-pick (`8cb2ff4`).
+- **`qa-automation-portfolio`:** `master` en `2f7ad42` (incluye su `CONTEXT.md`), limpio y sincronizado.
+- **Pruebas:** al cerrar la semana 13, **470 = 460 pasan + 10 omitidas a propósito** (3 de red/Groq y 7 de humo contra PostgreSQL, que necesitan `-m network`, `-m groq_live` o `-m postgres`), en 15 archivos. El backup suma 18 pruebas en un archivo nuevo (**~488 en 16, contado por suma, no con `pytest --collect-only`**). El CI pasó con ellas (el deploy del PR 13 está gateado por las pruebas), pero la suite completa **no se corrió en local** (el venv de `qa-automation-portfolio` no trae Flask: hace falta un intérprete con `app/requirements-dev.txt`).
 
 ### 0.4 QAP-17: resultado de la medición (cerrado el 2026-10-09, en In Review)
 
@@ -62,8 +71,8 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 
 ### 0.6 Qué sigue, en orden recomendado
 
-1. **Andres:** commit de `CONTEXT.md` y del reporte de cierre (solo documentación, no dispara deploy), y el de `CONTEXT.md` en `qa-automation-portfolio`.
-2. **Semana 14 (lanzamiento):** ✅ el rate limiting de `/admin/login` ya se hizo (QAP-20); **pendiente:** backup automático de PostgreSQL (hoy no hay copia de seguridad de la base), snapshot semanal de Oracle desde la consola, validación con el prompt de "recruiter senior QA", publicar en LinkedIn y poner la URL en el CV. Del backlog del sitio (sección 3e): verificar que cada cifra sea defendible, mantener `JOBS` sincronizado con el CV, sumar lo de las semanas 8-12 y decidir sobre el correo en texto plano.
+1. **Mañana (2026-10-14), tras las 03:32 UTC:** comprobar que el timer corrió solo: `journalctl -u qa-portfolio-backup.service --no-pager -n 20` debe mostrar un segundo backup y `ls ~/backups/daily` dos archivos. Es lo único del backup que aún no se ha visto (la rotación en producción tampoco: no hay nada que borrar hasta pasar 7 días).
+2. **Semana 14 (lanzamiento):** ✅ el rate limiting de `/admin/login` (QAP-20) y ✅ el backup diario de PostgreSQL; **pendiente, por orden:** (a) **copia fuera del servidor**: snapshot del volumen de arranque desde la consola de Oracle (manual) y bajar los dumps a otra máquina con `scp` (pesan KB); (b) validación con el prompt de "recruiter senior QA"; (c) publicar en LinkedIn y poner la URL en el CV. Del backlog del sitio (sección 3e): verificar que cada cifra sea defendible, mantener `JOBS` sincronizado con el CV, sumar lo de las semanas 8-12 y decidir sobre el correo en texto plano.
 3. **Calidad:** enforzar la CSP (renombrar `Content-Security-Policy-Report-Only`) tras mirar el panel con sesión iniciada; revisar la traducción al inglés de los casos de estudio; valorar un log de uso del modo en vivo (el logger de producción no está en INFO, así que hoy no aparece); mirar el primer run de CI después del **2026-10-19** (Node 20 en desuso y `ubuntu-latest` pasa a Ubuntu 26).
 4. **Apagar el modo en vivo si hace falta:** `AI_PROVIDER=` vacío en el `.env` del servidor y `docker compose up -d` (el interruptor definitivo es revocar la clave en la consola de Groq).
 
@@ -84,6 +93,7 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 - La limpieza de cercos y acentos graves **con el modelo real** (solo se probó sobre respuestas ya guardadas). La calidad con otro modelo o con esfuerzo de razonamiento mayor: no se midió.
 - El modo en vivo **nunca se ha probado en producción**; el reinicio real del servidor (systemd en frío) sigue sin probarse (lleva ~90 días encendido); no se leyó el Anexo de Procesamiento de Datos de Groq ni su página de precios (devolvió la portada).
 - La calidad de los casos de prueba de los **ejemplos pregenerados**: salen de los criterios de la historia, no de comprobar la aplicación real (solo el código de API se ejecutó).
+- **Backup:** que el timer dispare solo (se verá tras las 03:32 UTC del 2026-10-14), la rotación sobre archivos reales del servidor (solo probada en local con archivos falsos), la copia semanal del domingo en el servidor (simulada en local), y que haya espacio y permisos suficientes a largo plazo (hoy 190 GB libres, los dumps pesan KB). **Sin copia fuera del servidor.** Nunca se ha restaurado sobre la base real de producción: solo en una temporal.
 
 ### 0.9 Mapa de lo importante
 
@@ -99,6 +109,7 @@ Tres corridas con las mismas 6 entradas, mismo modelo (`openai/gpt-oss-20b`, esf
 | Puntuador automático (ejecuta código no confiable con filtro estático) | `scripts/score_measure.py` |
 | Resultados de mediciones con clave real | `.groq-measure/` (solo local) |
 | Lectura de logs del servidor / deploy | `deploy/logs.sh` / `deploy/deploy.sh` |
+| Backup de PostgreSQL, prueba de restauración y su timer | `deploy/backup-db.sh`, `deploy/restore-test.sh`, `deploy/qa-portfolio-backup.{service,timer}`; README "Backup de PostgreSQL"; pruebas en `app/tests/test_backup_config.py` |
 | Variables de entorno de la capa de IA (con sus valores medidos) | `.env.example` |
 | Datos de conexión al servidor (IP, clave) | `SERVER_INFO.local.md` (gitignorado) |
 
@@ -110,8 +121,7 @@ Sitio `https://andresqe.duckdns.org` · repos `github.com/anfelgonta201514/qa-po
 
 1. Leer `CLAUDE.md` y esta sección 0.
 2. **Verificar el estado real** (no fiarse de esta sección): `git status` en los dos repos, JQL de Jira, `pytest --collect-only`.
-3. Preguntar a Andres si **hizo el commit/push de la v3** y si **QAP-17 pasó a Done**.
-4. Seguir en 0.6.
+3. Seguir en 0.6 (primero la comprobación del timer, si ya pasó el 2026-10-14).
 
 ---
 
@@ -245,7 +255,7 @@ Cosas a ajustar, notar o mejorar a medida que avancen las semanas que quedan. Re
 ### Calidad técnica (semana 14, "validación del portafolio")
 - [ ] Pasada de **Lighthouse** (rendimiento, accesibilidad, SEO) y de **móvil real**; verificar si ya existen metaetiquetas Open Graph (vista previa al compartir en LinkedIn) y `sitemap.xml`/`robots.txt` — no se confirmó.
 - [ ] Probar el sitio con el prompt de "recruiter senior QA" del plan, ya con el contenido final.
-- [ ] Backup automático de PostgreSQL (cron diario) y snapshot semanal de Oracle (semana 14 del plan).
+- [x] Backup automático de PostgreSQL — **hecho 2026-10-13** (timer de systemd diario en vez de cron; ver 0.1b). [ ] **Sigue pendiente:** snapshot semanal de Oracle y copia de los dumps fuera del servidor (semana 14 del plan).
 
 ### Opcionales de infraestructura heredados
 - [ ] Reinicio real del servidor para validar el systemd unit.
