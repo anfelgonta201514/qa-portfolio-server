@@ -110,3 +110,44 @@ def test_timer_and_service_share_the_same_unit_name():
     # systemd asocia el .timer con el .service del mismo nombre si no se indica otra cosa.
     assert (DEPLOY / "qa-portfolio-backup.timer").exists() and (DEPLOY / "qa-portfolio-backup.service").exists()
     assert "Unit=" not in TIMER
+
+
+# ---------- scripts/pull-backups.ps1: baja los dumps a otro equipo (solo lectura sobre el servidor)
+
+PULL = (ROOT / "scripts" / "pull-backups.ps1").read_text(encoding="utf-8")
+
+
+def test_pull_script_carries_no_server_data():
+    # El repo es público: la IP y la clave se leen de SERVER_INFO.local.md (gitignorado), nunca van en el script.
+    assert not re.search(r"\b\d{1,3}(\.\d{1,3}){3}\b", PULL), "no debe haber ninguna IP escrita"
+    assert "SERVER_INFO.local.md" in PULL
+    assert "BEGIN" not in PULL and "PRIVATE KEY" not in PULL
+
+
+def test_pull_script_is_ascii_only_because_powershell_5_reads_utf8_without_bom_as_ansi():
+    assert PULL.isascii()
+
+
+def test_pull_script_refuses_to_trust_an_unknown_host_key():
+    assert "StrictHostKeyChecking=yes" in PULL
+    assert "IdentitiesOnly=yes" in PULL and "BatchMode=yes" in PULL
+
+
+def test_pull_script_never_deletes_anything():
+    # Sin el bloque de ayuda <# ... #> (dice "del servidor", que no es el alias `del`) ni los comentarios de línea.
+    code = re.sub(r"<#.*?#>", "", PULL, flags=re.S)
+    code = "\n".join(l for l in code.splitlines() if not l.lstrip().startswith("#"))
+    assert not re.search(r"Remove-Item|\brm\b|^\s*del\s|\brmdir\b|Clear-Content", code, flags=re.I | re.M)
+    # -Force solo en New-Item (crear carpetas), nunca para borrar
+    assert re.findall(r"-Force", code) == ["-Force"] and "New-Item -ItemType Directory -Force" in code
+
+
+def test_pull_script_refuses_destinations_inside_a_git_repo_and_the_restricted_keys():
+    assert re.search(r"Test-Path -LiteralPath \(Join-Path \$probe '\.git'\)", PULL)
+    assert "dentro de un repositorio git" in PULL
+    assert "qa_portfolio_(logs|deploy)" in PULL, "las claves con comando forzado no sirven para scp"
+
+
+def test_pull_script_verifies_every_downloaded_dump_and_fails_on_a_corrupt_one():
+    assert "GZipStream" in PULL and "Test-GzipFile" in PULL
+    assert re.search(r"if \(\$bad -gt 0\) \{ Fail", PULL)
