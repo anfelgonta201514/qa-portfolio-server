@@ -161,3 +161,16 @@ def test_every_documented_way_to_run_the_pull_script_bypasses_the_default_execut
     assert len(invocations) >= 4, "el README y el script documentan dos comandos cada uno"
     for line in invocations:
         assert "-ExecutionPolicy Bypass" in line, line
+
+
+def test_footer_check_leaves_margin_for_the_lines_pg_dump_writes_after_it():
+    # Hallazgo: el pie de pg_dump quedaba en la 5.ª línea desde el final (después vienen "--", una vacía,
+    # "\unrestrict <token>" y otra vacía) y el script miraba solo las últimas 5: sin margen. Un pg_dump que añadiera
+    # una línea más haría que un backup bueno se diera por cortado.
+    n = int(re.search(r"tail -n (\d+) \| grep -q \"PostgreSQL database dump complete\"", BACKUP).group(1))
+    trailing_today = ["--", "", chr(92) + "unrestrict abc123", ""]  # lo que escribe pg_dump 16 tras el pie
+    dump_end = ["-- PostgreSQL database dump complete"] + trailing_today
+    assert dump_end[-n:][0] == dump_end[0], "el pie debe caer dentro de las últimas N líneas"
+    extra = ["", "-- futura línea 1", "-- futura línea 2", "-- futura línea 3"]
+    assert (dump_end + extra)[-n:].count("-- PostgreSQL database dump complete") == 1, f"N={n} no deja margen"
+    assert n >= 20

@@ -37,7 +37,9 @@ echo "==> comprobando el backup"
 gzip -t "$partial"
 size="$(stat -c %s "$partial")"
 (( size >= MIN_BYTES )) || { echo "backup-db.sh: el archivo pesa $size bytes, demasiado poco" >&2; exit 1; }
-zcat "$partial" | tail -n 5 | grep -q "PostgreSQL database dump complete" \
+# El pie de pg_dump va seguido de unas pocas líneas (hoy "--", una vacía, "\unrestrict <token>" y otra vacía) y las
+# versiones nuevas de pg_dump pueden añadir más: se miran las últimas 20 para no dar por "cortado" un dump bueno.
+zcat "$partial" | tail -n 20 | grep -q "PostgreSQL database dump complete" \
   || { echo "backup-db.sh: el dump no termina con su pie esperado (cortado)" >&2; exit 1; }
 
 mv "$partial" "$final"
