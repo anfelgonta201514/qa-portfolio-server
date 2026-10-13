@@ -1,0 +1,112 @@
+"""Pruebas de la configuración del backup de PostgreSQL (semana 14).
+
+Docker y systemd no se pueden arrancar aquí, así que se leen como texto los scripts y las unidades y se comprueba
+que dicen lo que deben. Lo que NO prueban: que pg_dump funcione ni que la restauración dé una base correcta (eso lo
+demuestra `deploy/restore-test.sh` en el servidor) ni que el timer dispare (eso lo ve `systemctl list-timers`).
+"""
+import re
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+DEPLOY = ROOT / "deploy"
+BACKUP = (DEPLOY / "backup-db.sh").read_text(encoding="utf-8")
+RESTORE = (DEPLOY / "restore-test.sh").read_text(encoding="utf-8")
+SERVICE = (DEPLOY / "qa-portfolio-backup.service").read_text(encoding="utf-8")
+TIMER = (DEPLOY / "qa-portfolio-backup.timer").read_text(encoding="utf-8")
+
+
+def _code(text):
+    """El script sin líneas de comentario (los comentarios pueden nombrar cosas que el código no hace)."""
+    return "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+
+
+@pytest.mark.parametrize("script", [BACKUP, RESTORE], ids=["backup-db", "restore-test"])
+def test_scripts_fail_fast(script):
+    assert re.search(r"^set -euo pipefail$", script, flags=re.M)
+
+
+@pytest.mark.parametrize("script", [BACKUP, RESTORE], ids=["backup-db", "restore-test"])
+def test_scripts_use_lf_line_endings(script):
+    # Con CRLF bash falla en el servidor ("$'\r': command not found"); .gitattributes ya lo fuerza, esto lo vigila.
+    assert "\r" not in script
+
+
+@pytest.mark.parametrize("script", [BACKUP, RESTORE], ids=["backup-db", "restore-test"])
+def test_scripts_contain_no_secret_values(script):
+    code = _code(script)
+    assert not re.search(r"PGPASSWORD|POSTGRES_PASSWORD|password\s*=", code, flags=re.I)
+    assert "source .env" not in code and ". .env" not in code, "no hace falta leer el .env: el contenedor ya tiene las credenciales"
+
+
+def test_backup_dumps_from_inside_the_postgres_container_without_a_tty():
+    code = _code(BACKUP)
+    assert "docker compose exec -T postgres" in code
+    assert "pg_dump" in code
+    # Las credenciales las expande el shell del contenedor (comillas simples), no el del anfitrión.
+    assert re.search(r"sh -c 'pg_dump -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"", code)
+
+
+def test_backup_is_written_to_a_partial_file_and_only_renamed_after_verification():
+    code = _code(BACKUP)
+    assert ".partial" in code
+    assert code.index("gzip -t") < code.index('mv "$partial" "$final"')
+    assert code.index("database dump complete") < code.index('mv "$partial" "$final"')
+
+
+def test_a_failed_backup_leaves_no_partial_file_behind():
+    assert re.search(r"trap 'rm -f \"\$partial\"' EXIT", BACKUP)
+
+
+def test_backup_files_are_private_to_the_owner():
+    assert re.search(r"^umask 077$", BACKUP, flags=re.M)
+
+
+def test_rotation_keeps_seven_daily_and_four_weekly_by_default():
+    assert 'KEEP_DAILY="${KEEP_DAILY:-7}"' in BACKUP
+    assert 'KEEP_WEEKLY="${KEEP_WEEKLY:-4}"' in BACKUP
+    assert re.search(r'date -u \+%u\)" = "7"', BACKUP), "la copia semanal es la del domingo"
+
+
+def test_rotation_survives_an_empty_folder_under_pipefail():
+    # Regresión hallada en la prueba real: weekly/ vacío (lunes a sábado) hacía que `ls` devolviera 2 y, con pipefail,
+    # el script abortaba ya hecho el backup, dejando el servicio de systemd en "failed".
+    code = _code(BACKUP)
+    assert re.search(r'\{ ls -1t "\$dir"/db-\*\.sql\.gz 2>/dev/null \|\| true; \} \|', code)
+
+
+def test_rotation_only_touches_files_that_the_script_itself_creates():
+    assert "db-*.sql.gz" in BACKUP
+    assert not re.search(r"rm\s+-rf?\s", _code(BACKUP)), "nada de rm recursivo en el script de backup"
+
+
+def test_restore_test_never_targets_the_real_database():
+    code = _code(RESTORE)
+    assert "restore_check_" in code
+    assert re.search(r'DROP DATABASE IF EXISTS \\"\$tmpdb\\"', code), "solo borra la base temporal"
+    assert not re.search(r'DROP DATABASE[^\n]*\$real|DROP DATABASE[^\n]*POSTGRES_DB', code)
+    assert '"$tmpdb" != "$real"' in code
+
+
+def test_restore_test_cleans_up_even_when_it_fails():
+    assert re.search(r"trap cleanup EXIT", RESTORE)
+
+
+def test_service_runs_the_backup_script_as_the_deploy_user():
+    assert "ExecStart=/bin/bash /home/ubuntu/qa-portfolio-server/deploy/backup-db.sh" in SERVICE
+    assert re.search(r"^User=ubuntu$", SERVICE, flags=re.M)
+    assert re.search(r"^Type=oneshot$", SERVICE, flags=re.M)
+    assert "Requires=docker.service" in SERVICE
+
+
+def test_timer_is_daily_and_catches_up_after_downtime():
+    assert re.search(r"^OnCalendar=\*-\*-\* \d{2}:\d{2}:00 UTC$", TIMER, flags=re.M), "diario y con zona horaria explícita"
+    assert re.search(r"^Persistent=true$", TIMER, flags=re.M)
+    assert re.search(r"^WantedBy=timers\.target$", TIMER, flags=re.M)
+
+
+def test_timer_and_service_share_the_same_unit_name():
+    # systemd asocia el .timer con el .service del mismo nombre si no se indica otra cosa.
+    assert (DEPLOY / "qa-portfolio-backup.timer").exists() and (DEPLOY / "qa-portfolio-backup.service").exists()
+    assert "Unit=" not in TIMER

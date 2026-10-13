@@ -1,0 +1,12 @@
+[Unit]
+Description=Dispara el backup diario de PostgreSQL del portafolio
+
+[Timer]
+# 03:30 UTC (22:30 en Bogotá): hora de poco tráfico.
+OnCalendar=*-*-* 03:30:00 UTC
+# Si el servidor estaba apagado a esa hora, hace el backup al arrancar.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
