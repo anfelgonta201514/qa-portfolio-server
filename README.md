@@ -247,9 +247,11 @@ Hasta la semana 13 la base vivía solo en el volumen Docker `postgres_data`, sin
 **Bajar los dumps a tu PC (`scripts/pull-backups.ps1`, PowerShell, solo lectura sobre el servidor):**
 
 ```powershell
-powershell -File scripts\pull-backups.ps1 -DryRun   # muestra qué haría, sin conectarse
-powershell -File scripts\pull-backups.ps1
+powershell -ExecutionPolicy Bypass -File scripts\pull-backups.ps1 -DryRun   # muestra qué haría, sin conectarse
+powershell -ExecutionPolicy Bypass -File scripts\pull-backups.ps1
 ```
+
+`-ExecutionPolicy Bypass` es necesario en un Windows con la política por defecto (scripts bloqueados: "la ejecución de scripts está deshabilitada en este sistema"). Solo vale para ese proceso: **no cambia la configuración del sistema**.
 
 Copia `daily/` y `weekly/` a `Documents\qa-portfolio-backups` (cambiable con `-Destination`), comprueba que cada archivo es un gzip íntegro y falla si alguno está corrupto. Nunca borra nada, ni en el servidor ni en tu PC. La IP y la ruta de la clave salen de `SERVER_INFO.local.md` (gitignorado): el script no lleva datos del servidor. Usa la clave de **administración**; las de logs y deploy tienen comando forzado y no sirven para `scp`. Se niega a escribir dentro de un repositorio git y avisa si el destino está en OneDrive, porque los dumps contienen los datos de la base (proyectos y el usuario admin con su hash). Con `StrictHostKeyChecking=yes`: si la huella del servidor cambia, falla en vez de aceptarla. Si la clave tiene contraseña y no hay `ssh-agent`, `BatchMode=yes` hará que falle en lugar de pedirla.
 
