@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diario de la base PostgreSQL del portafolio
+Requires=docker.service
+After=docker.service qa-portfolio.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/qa-portfolio-server
+ExecStart=/bin/bash /home/ubuntu/qa-portfolio-server/deploy/backup-db.sh

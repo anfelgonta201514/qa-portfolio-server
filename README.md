@@ -232,6 +232,47 @@ Tres módulos pequeños que preparan el modo en vivo sin atarlo a una marca (ver
 - Visitantes detrás de una misma red comparten IP y, por tanto, el mismo límite.
 - **La primera llamada real a Groq (2026-10-09) falló con un 403 que las pruebas simuladas no podían ver**: Cloudflare bloquea el `User-Agent` por defecto de `urllib`. Ya está corregido (ver `docs/proveedores-ia.md`, "Hallazgo de la primera llamada real"), con una prueba de regresión, pero **todavía falta repetir la prueba real con la corrección**. Sus pruebas normales usan respuestas simuladas escritas según la documentación oficial. Siguen sin comprobarse la latencia real, el formato exacto de los errores, la cuota, y sobre todo **si el razonamiento de los modelos `gpt-oss` se come el tope de salida y devuelve respuestas vacías** (la documentación no dice si esos tokens cuentan; la capa ya responde con el ejemplo pregenerado en ese caso).
 
+## Backup de PostgreSQL (semana 14)
+
+Hasta la semana 13 la base vivía solo en el volumen Docker `postgres_data`, sin ninguna copia. Ahora hay un backup diario, con rotación y una prueba de restauración.
+
+| Archivo | Qué hace |
+|---|---|
+| [`deploy/backup-db.sh`](deploy/backup-db.sh) | `pg_dump` dentro del contenedor `postgres`, comprimido. Escribe a un `.partial` y solo lo renombra si pasa `gzip -t`, un tamaño mínimo y el pie que escribe `pg_dump` al terminar. Sin secretos: las credenciales ya están en el entorno del contenedor. |
+| [`deploy/qa-portfolio-backup.service`](deploy/qa-portfolio-backup.service) / [`.timer`](deploy/qa-portfolio-backup.timer) | Timer de systemd diario a las 03:30 UTC (22:30 en Bogotá). `Persistent=true`: si el servidor estaba apagado, lo hace al arrancar. Los logs se ven con `journalctl -u qa-portfolio-backup.service`. |
+| [`deploy/restore-test.sh`](deploy/restore-test.sh) | Restaura el último backup en una base **temporal** (`restore_check_<fecha>`), cuenta tablas y filas y la borra. Nunca toca la base real. |
+
+**Dónde quedan las copias:** `/home/ubuntu/backups/daily/` (las 7 más recientes) y `/home/ubuntu/backups/weekly/` (4, la del domingo), solo legibles por `ubuntu`. Es el mismo disco que la base, así que **no protege contra perder la instancia**: para eso están el snapshot del volumen de arranque en la consola de Oracle y bajar los dumps a otra máquina (`scp`, pesan KB).
+
+**Instalación en el servidor (una sola vez; no la hace el deploy):**
+
+```bash
+cd ~/qa-portfolio-server && git pull --ff-only
+sudo cp deploy/qa-portfolio-backup.service deploy/qa-portfolio-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now qa-portfolio-backup.timer
+systemctl list-timers qa-portfolio-backup.timer      # debe mostrar la próxima ejecución
+sudo systemctl start qa-portfolio-backup.service     # primer backup, a mano
+journalctl -u qa-portfolio-backup.service --no-pager -n 20
+bash deploy/restore-test.sh                          # demuestra que el backup se puede restaurar
+```
+
+**Restaurar de verdad (emergencia).** Esto **reemplaza** el contenido de la base real: hacerlo solo si hace falta y, si la base todavía responde, guardar antes una copia de su estado actual.
+
+```bash
+cd ~/qa-portfolio-server
+docker compose stop app                               # que nadie escriba mientras se restaura
+docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --if-exists "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+zcat ~/backups/daily/<archivo>.sql.gz | docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose start app
+```
+
+Es normal que la restauración muestre unas filas de `set_config` y `setval`: es `pg_dump` reajustando las secuencias. Los errores de verdad cortan el comando (`ON_ERROR_STOP=1`).
+
+**Qué cubren las pruebas automáticas (`app/tests/test_backup_config.py`) y qué no:** leen los scripts y las unidades como texto (sin secretos, falla rápido, no deja archivos a medias, rotación, `restore-test` nunca apunta a la base real, timer diario con `Persistent`). **No** prueban que `pg_dump` funcione ni que la restauración dé una base correcta: eso lo demuestra `restore-test.sh` en el servidor.
+
+Las unidades corren como `ubuntu`, que es quien tiene el plugin `docker compose` (ver Notas de troubleshooting); por eso no usan `root`.
+
 ## Lectura de logs desde Claude (solo lectura)
 
 Para que Claude pueda analizar el servidor (errores de la app, Nginx, renovación de certificados) sin darle acceso de escritura, hay una **segunda clave SSH, distinta de la de deploy**, atada a [`deploy/logs.sh`](deploy/logs.sh) con un forced command en `authorized_keys`:
