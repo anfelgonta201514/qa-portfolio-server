@@ -242,7 +242,16 @@ Hasta la semana 13 la base vivía solo en el volumen Docker `postgres_data`, sin
 | [`deploy/qa-portfolio-backup.service`](deploy/qa-portfolio-backup.service) / [`.timer`](deploy/qa-portfolio-backup.timer) | Timer de systemd diario a las 03:30 UTC (22:30 en Bogotá). `Persistent=true`: si el servidor estaba apagado, lo hace al arrancar. Los logs se ven con `journalctl -u qa-portfolio-backup.service`. |
 | [`deploy/restore-test.sh`](deploy/restore-test.sh) | Restaura el último backup en una base **temporal** (`restore_check_<fecha>`), cuenta tablas y filas y la borra. Nunca toca la base real. |
 
-**Dónde quedan las copias:** `/home/ubuntu/backups/daily/` (las 7 más recientes) y `/home/ubuntu/backups/weekly/` (4, la del domingo), solo legibles por `ubuntu`. Es el mismo disco que la base, así que **no protege contra perder la instancia**: para eso están el snapshot del volumen de arranque en la consola de Oracle y bajar los dumps a otra máquina (`scp`, pesan KB).
+**Dónde quedan las copias:** `/home/ubuntu/backups/daily/` (las 7 más recientes) y `/home/ubuntu/backups/weekly/` (4, la del domingo), solo legibles por `ubuntu`. Es el mismo disco que la base, así que **no protege contra perder la instancia**: para eso están el snapshot del volumen de arranque en la consola de Oracle (manual; Always Free permite 5 copias en total) y bajar los dumps a otra máquina con [`scripts/pull-backups.ps1`](scripts/pull-backups.ps1) (pesan KB).
+
+**Bajar los dumps a tu PC (`scripts/pull-backups.ps1`, PowerShell, solo lectura sobre el servidor):**
+
+```powershell
+powershell -File scripts\pull-backups.ps1 -DryRun   # muestra qué haría, sin conectarse
+powershell -File scripts\pull-backups.ps1
+```
+
+Copia `daily/` y `weekly/` a `Documents\qa-portfolio-backups` (cambiable con `-Destination`), comprueba que cada archivo es un gzip íntegro y falla si alguno está corrupto. Nunca borra nada, ni en el servidor ni en tu PC. La IP y la ruta de la clave salen de `SERVER_INFO.local.md` (gitignorado): el script no lleva datos del servidor. Usa la clave de **administración**; las de logs y deploy tienen comando forzado y no sirven para `scp`. Se niega a escribir dentro de un repositorio git y avisa si el destino está en OneDrive, porque los dumps contienen los datos de la base (proyectos y el usuario admin con su hash). Con `StrictHostKeyChecking=yes`: si la huella del servidor cambia, falla en vez de aceptarla. Si la clave tiene contraseña y no hay `ssh-agent`, `BatchMode=yes` hará que falle en lugar de pedirla.
 
 **Instalación en el servidor (una sola vez; no la hace el deploy):**
 
