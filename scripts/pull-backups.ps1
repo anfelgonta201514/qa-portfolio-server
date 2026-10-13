@@ -20,8 +20,9 @@
   No se conecta: solo muestra que haria (ruta de la clave, usuario, destino y comandos).
 
 .EXAMPLE
-  powershell -File scripts\pull-backups.ps1 -DryRun
-  powershell -File scripts\pull-backups.ps1
+  powershell -ExecutionPolicy Bypass -File scripts\pull-backups.ps1 -DryRun
+  powershell -ExecutionPolicy Bypass -File scripts\pull-backups.ps1
+  # -ExecutionPolicy Bypass solo afecta a este proceso; hace falta si Windows bloquea los scripts (politica por defecto).
 #>
 [CmdletBinding()]
 param(

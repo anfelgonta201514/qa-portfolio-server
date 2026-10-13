@@ -151,3 +151,13 @@ def test_pull_script_refuses_destinations_inside_a_git_repo_and_the_restricted_k
 def test_pull_script_verifies_every_downloaded_dump_and_fails_on_a_corrupt_one():
     assert "GZipStream" in PULL and "Test-GzipFile" in PULL
     assert re.search(r"if \(\$bad -gt 0\) \{ Fail", PULL)
+
+
+def test_every_documented_way_to_run_the_pull_script_bypasses_the_default_execution_policy():
+    # Regresión: con la política por defecto de Windows ("scripts deshabilitados") `powershell -File x.ps1` falla.
+    # Mis pruebas locales usaban -ExecutionPolicy Bypass y lo ocultaron; los comandos documentados deben llevarlo.
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    invocations = re.findall(r"^\s*(powershell\b.*scripts.pull-backups\.ps1.*)$", readme + "\n" + PULL, flags=re.M)
+    assert len(invocations) >= 4, "el README y el script documentan dos comandos cada uno"
+    for line in invocations:
+        assert "-ExecutionPolicy Bypass" in line, line
