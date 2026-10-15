@@ -148,6 +148,30 @@ jobs:
           fi
           echo "Cabeceras de seguridad y redirección HTTP -> HTTPS correctas"
 
+      # Compresión de los estáticos en la respuesta REAL (QAP-26). Comprueba tres cosas: que el CSS sale con gzip y
+      # `Vary: Accept-Encoding`; que los estáticos conservan las cabeceras de seguridad (un `add_header` dentro del
+      # location las haría desaparecer en silencio); y que el HTML NO sale comprimido a propósito (riesgo BREACH: lleva
+      # token CSRF y texto del visitante). Usa GET (lo que hace un navegador, con el cuerpo real) en vez de HEAD; el
+      # paso se probó contra un Nginx 1.27 real con la configuración buena (pasa) y con tres rotas a propósito
+      # (gzip a nivel de servidor, gzip apagado y un add_header en /static/): en las tres falla.
+      - name: Static compression
+        run: |
+          get() { curl -fsS --max-time 10 -D - -o /dev/null -H 'Accept-Encoding: gzip' "$1" | tr -d '\r'; }
+          css=$(get https://andresqe.duckdns.org/static/site.css)
+          echo "$css"
+          missing=""
+          echo "$css" | grep -qi '^content-encoding: gzip' || missing="$missing css-sin-gzip"
+          echo "$css" | grep -qi '^vary:.*accept-encoding' || missing="$missing css-sin-vary"
+          echo "$css" | grep -qi '^x-content-type-options' || missing="$missing estaticos-sin-x-content-type-options"
+          echo "$css" | grep -qi '^strict-transport-security' || missing="$missing estaticos-sin-hsts"
+          html=$(get https://andresqe.duckdns.org/)
+          if echo "$html" | grep -qi '^content-encoding'; then missing="$missing html-comprimido-(BREACH)"; fi
+          if [ -n "$missing" ]; then
+            echo "Falla:$missing"
+            exit 1
+          fi
+          echo "Estáticos comprimidos con gzip, con sus cabeceras de seguridad, y HTML sin comprimir"
+
       - name: Cleanup SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key
