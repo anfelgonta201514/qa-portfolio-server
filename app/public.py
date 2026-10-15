@@ -13,6 +13,9 @@ from request_ip import client_ip
 public_bp = Blueprint("public", __name__)
 
 PROJECT_TAGS = {4: "UI", 5: "API", 6: "CI/CD", 7: "BDD"}
+# Solo estas etiquetas corresponden a una parte del CI de qa-automation-portfolio y llevan la insignia de estado real.
+# Las tarjetas de las semanas 8-14 (QAP-23) no tienen CI propio: sin insignia (mostrar "sin datos" confundiría).
+CI_TAGS = frozenset(PROJECT_TAGS.values())
 
 
 def _cv_url():
@@ -35,12 +38,13 @@ def _projects(lang: str, ci: dict):
         if lang == "en" and p.title in content.PROJECT_EN:
             title, description = content.PROJECT_EN[p.title]
         case_page = content.CASE_STUDIES.get(p.repo_url or "")
-        tag = PROJECT_TAGS.get(p.week, "QA")
+        # La etiqueta sale del título si es una de las tarjetas nuevas (varias comparten semana); si no, de la semana.
+        tag = content.PROJECT_TAG_BY_TITLE.get(p.title) or PROJECT_TAGS.get(p.week, "QA")
         items.append({
             "title": title,
             "description": description,
             "tag": tag,
-            "ci": ci["states"].get(tag, ci_status.UNKNOWN),
+            "ci": ci["states"].get(tag, ci_status.UNKNOWN) if tag in CI_TAGS else None,
             "stack": [s.strip() for s in p.tech_stack.split(",") if s.strip()],
             "repo_url": p.repo_url,
             "case_url": content.PAGES[case_page][lang] if case_page else None,

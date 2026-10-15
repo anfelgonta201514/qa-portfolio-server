@@ -31,7 +31,7 @@ qa-portfolio-server/
 │   ├── admin.py         → blueprint /admin/* — login/logout, dashboard, alta/edición/borrado
 │   ├── models.py        → modelos SQLAlchemy: Project, User (password hasheado)
 │   ├── create_admin.py  → script interactivo para crear/actualizar el usuario admin (getpass, nunca en texto plano)
-│   ├── seed.py           → carga las 4 entradas reales de qa-automation-portfolio (idempotente)
+│   ├── seed.py           → carga las 10 tarjetas de proyectos (4 de qa-automation-portfolio + 6 de este repo; idempotente, por título)
 │   ├── public.py        → blueprint del sitio público: overview, experiencia y casos de estudio, en ES y EN
 │   ├── content.py       → todos los textos del sitio público en español e inglés (+ traducción EN de los proyectos)
 │   ├── templates/        → Jinja2: site/ (sitio público), base.html + admin/ (login, dashboard, form)
@@ -99,6 +99,14 @@ Los cuatro proyectos del portafolio tienen su caso de estudio (UI, API, CI/CD y 
 **Estructura de cada caso:** problema, enfoque, decisiones clave, cómo corre (con un fragmento real), resultado (cifras), lo que costó o falló, y **límites** (lo que no cubre). Lo que se afirma sale de `qa-automation-portfolio` y se comprobó el 2026-10-10: los fragmentos son **copia literal** de archivos de ese repo, las cifras se midieron (10 tests de API en 3,16 s en una corrida local; 6 comportamientos de la API que no siguen REST; 4 jobs por ejecución; 6-11 min por ejecución en las últimas 8 de GitHub; 2 escenarios BDD), y el historial del CI se leyó de la API pública de GitHub. Las pruebas (`app/tests/test_case_studies.py`) comprueban, cuando el repo hermano está en la carpeta de al lado, que cada fragmento sigue siendo copia literal, que los conteos coinciden y que cada enlace a GitHub apunta a una ruta que existe; si no está (en CI), se omiten. **Si cambia el repo de tests, hay que volver a medir.**
 
 **Correcciones de paso:** la página de UI decía "8" escenarios con la leyenda "15 casos"; ahora dice 15 casos (6 escenarios + 9 filas de las baterías de Excel, contados con `pytest --collect-only`). Y los cuatro casos de estudio medían entre 455 y 732 px de ancho en un móvil de 375 (un fragmento de código largo ensanchaba la página; las rejillas de una columna usaban `1fr` en lugar de `minmax(0, 1fr)`): ahora caben, el código se parte, y la tabla de la API se convierte en tarjetas.
+
+## Proyectos de las semanas 8-14 en la portada (QAP-23)
+
+La portada muestra **10 tarjetas**: las 4 de `qa-automation-portfolio` (UI, API, CI/CD, BDD; con su caso de estudio y la insignia del estado real del CI) y **6 de este repo**: servidor propio y deploy automático, routines de Claude Code, MCP (del test fallido al ticket), demos de IA, calidad del propio sitio (pruebas, seguridad y documentación de QE) y backup de PostgreSQL. Las nuevas **no llevan insignia de CI** (no tienen un CI propio que mostrar; poner «sin datos» confundiría), tienen su propia etiqueta y enlazan directo a su código o documento en este repo, con «Ver código →» (no tienen página de caso de estudio).
+
+- **Dónde vive cada cosa:** el texto en español, el stack, el enlace y la semana, en [`app/seed.py`](app/seed.py); la traducción al inglés (`PROJECT_EN`) y la etiqueta (`PROJECT_TAG_BY_TITLE`) en [`app/content.py`](app/content.py), **con el título como clave**: si cambias un título en un sitio hay que cambiarlo en los otros dos (una prueba lo vigila: `app/tests/test_projects_content.py`).
+- **Cargar o actualizar las tarjetas en producción: el deploy NO ejecuta el seed.** Por SSH: `cd ~/qa-portfolio-server && docker compose exec app python seed.py`. Es idempotente: **solo añade** las que faltan (por título) y **no modifica** las que ya existen. Para **corregir el texto de una tarjeta ya cargada**, hay que editarla desde el panel admin (o borrarla allí y volver a ejecutar el seed). Hasta que las filas existan en la base, el sitio no las muestra.
+- **Afirmaciones:** cada frase salió de algo comprobado en el repo, en Jira o en producción al redactarla (fecha: 2026-10-14). Si el trabajo cambia, el texto hay que revisarlo a mano: las pruebas no saben si es cierto.
 
 ## Panel admin
 

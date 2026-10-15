@@ -110,10 +110,13 @@ def test_every_project_card_links_to_its_case_study_when_the_projects_come_from_
 
 
 def test_the_repo_urls_of_the_seeded_projects_all_have_a_case_page():
+    # Solo las 4 tarjetas de qa-automation-portfolio (semanas 4-7) tienen caso de estudio; las de las semanas 8-14
+    # (QAP-23) enlazan directo a su código y no deben tener página de caso (ver test_projects_content.py).
     import seed
-    urls = {p["repo_url"] for p in seed.PROJECTS}
+    urls = {p["repo_url"] for p in seed.PROJECTS if p["week"] <= 7}
     assert urls <= set(content.CASE_STUDIES), urls - set(content.CASE_STUDIES)
     assert {content.CASE_STUDIES[u] for u in urls} == {"case_ui", *KEYS}
+    assert not {p["repo_url"] for p in seed.PROJECTS if p["week"] >= 8} & set(content.CASE_STUDIES)
 
 
 # ---------- enlaces y escape

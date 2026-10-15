@@ -82,7 +82,7 @@ T = {
         "proj_title": "Código abierto para revisar cómo trabajo",
         "repo": "Repositorio en GitHub →",
         "read_case": "Leer caso de estudio →",
-        "view_code": "Caso de estudio pronto · ver código",
+        "view_code": "Ver código →",
         "no_projects": "Todavía no hay proyectos cargados.",
         "site_label": "Este sitio",
         "site_title": "Un portafolio que se prueba a sí mismo",
@@ -196,7 +196,7 @@ T = {
         "proj_title": "Open source, so you can review how I work",
         "repo": "GitHub repository →",
         "read_case": "Read case study →",
-        "view_code": "Case study soon · view code",
+        "view_code": "View code →",
         "no_projects": "No projects loaded yet.",
         "site_label": "This site",
         "site_title": "A portfolio that tests itself",
@@ -436,4 +436,40 @@ PROJECT_EN = {
         "Docker + BDD",
         "A single Docker image reused locally and in CI (Python/Playwright never installed natively on the runner). Business scenarios in Gherkin (pytest-bdd) reusing the same Page Objects as the plain suite, readable by non-technical people.",
     ),
+    # Semanas 8-14 (QAP-23): trabajo de qa-portfolio-server. Las claves son los títulos de app/seed.py.
+    "Servidor propio — Docker + deploy automático": (
+        "Own server — Docker + automated deploy",
+        "This site runs on its own server (Oracle Cloud Always Free, ARM): Nginx, Flask/Gunicorn and PostgreSQL in containers with Docker Compose, and HTTPS with automatic renewal. Every push to main triggers GitHub Actions: the tests run and only if they pass is it deployed over SSH, with a key tied to a single script (forced command). The red path was verified too: a broken test leaves the deploy «skipped».",
+    ),
+    "Routines de Claude Code — CI y review de PRs": (
+        "Claude Code Routines — CI and PR review",
+        "Two scheduled Claude Code agents watch the automation repo: one checks the CI status every night and reports to Slack; the other comments on every open PR with a QA checklist based on the repo’s rules. The GitHub webhook never fired, so the review runs on an hourly cron: a platform limit that was documented.",
+    ),
+    "MCP — del test fallido al ticket": (
+        "MCP — from a failed test to a ticket",
+        "A real Playwright failure is analyzed from its aria snapshot, files a bug in Jira and notifies Slack through MCP connectors. The flow surfaced a real finding: the negative login test rested on a false premise (the app does show «Invalid credentials»), fixed in QAP-7. Includes a sprint report generated from Jira. Known limitation: the connectors only send text, not attachments.",
+    ),
+    "Demos de IA aplicada a QA": (
+        "AI demos applied to QA",
+        "Three demos (test cases, bug reports and API tests) with pre-generated examples and a live mode with Groq: an interchangeable provider layer, per-visitor limit and daily cap, and a fallback to the examples if the provider fails. Each response states which model generated it and that it is an unverified draft. Quality was measured with a 30-point rubric (14 → 21 → 21 after two rounds of adjustments), with what did not improve documented.",
+    ),
+    "Calidad del propio sitio — pruebas, seguridad y documentación": (
+        "Site quality — tests, security and documentation",
+        "More than 500 automated tests (some network and PostgreSQL smoke tests are opt-in) covering the API, the login, the admin panel and the configuration: HttpOnly/Secure/SameSite cookies, security headers (CSP in report-only mode), login attempt limit, https URLs and share previews. New tests were validated by planting faults on purpose. Plus a test strategy, test plan, executive report and user-story analysis, generated with Claude and stating what was executed and what was only inferred.",
+    ),
+    "Backup y recuperación — PostgreSQL": (
+        "Backup and recovery — PostgreSQL",
+        "Daily systemd backup: a compressed pg_dump that is only trusted if it passes gzip and a dump-footer check, a rotation of 7 daily and 4 weekly copies, and a restore test into a temporary database. It was tested against a real Postgres, and that test found a fault the text-based tests could not see. Plus a disk snapshot on Oracle and a script to pull the dumps to another machine.",
+    ),
+}
+
+# Etiqueta (pill) de las tarjetas nuevas por título: varias comparten semana, así que no se puede sacar de la semana.
+# Ninguna es de CI: no llevan insignia de estado (ver CI_TAGS en public.py).
+PROJECT_TAG_BY_TITLE = {
+    "Servidor propio — Docker + deploy automático": "Infra",
+    "Routines de Claude Code — CI y review de PRs": "Automatización",
+    "MCP — del test fallido al ticket": "MCP",
+    "Demos de IA aplicada a QA": "IA",
+    "Calidad del propio sitio — pruebas, seguridad y documentación": "Calidad",
+    "Backup y recuperación — PostgreSQL": "Ops",
 }
