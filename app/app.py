@@ -4,6 +4,7 @@ import os
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from ai_service import build_service
 from login_throttle import LoginThrottle
@@ -40,6 +41,14 @@ def _env_bool(name: str, default: bool) -> bool:
 
 def create_app():
     app = Flask(__name__)
+    # Detrás de Nginx (QAP-22): Gunicorn recibe http, así que sin esto Flask construye todas las URLs absolutas con
+    # http:// (hreflang, canonical, la redirección de /en a /en/...). Se confía SOLO en X-Forwarded-Proto, que Nginx
+    # fija siempre con `$scheme` y que un cliente no puede colar porque el puerto 8000 no está publicado. NO en
+    # X-Forwarded-For (ver request_ip.py: un cliente podría esquivar los límites) ni en Host/Port/Prefix.
+    # Efecto colateral buscado: request.is_secure pasa a ser True en producción, y Flask-WTF empieza a exigir un
+    # Referer del mismo sitio en los POST (WTF_CSRF_SSL_STRICT); Nginx envía Referrer-Policy
+    # strict-origin-when-cross-origin, que en peticiones al mismo origen manda el Referer completo.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=1, x_host=0, x_port=0, x_prefix=0)
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
     # pool_pre_ping: antes de usar una conexión del pool, la prueba con un
     # "SELECT 1" liviano. Sin esto, si Postgres se reinicia (ej. un deploy

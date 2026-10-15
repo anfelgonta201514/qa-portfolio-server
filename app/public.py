@@ -1,7 +1,7 @@
 import math
 from pathlib import Path
 
-from flask import Blueprint, abort, current_app, render_template, request, send_from_directory, url_for
+from flask import Blueprint, Response, abort, current_app, render_template, request, send_from_directory, url_for
 
 import case_studies
 import ci_status
@@ -178,6 +178,35 @@ def _demo_live(lang):
 @public_bp.get("/favicon.ico")
 def favicon():
     return send_from_directory(Path(current_app.static_folder) / "img", "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
+@public_bp.get("/robots.txt")
+def robots():
+    """Qué pueden rastrear los buscadores (QAP-22). No es una medida de seguridad: solo evita indexar el panel y la API."""
+    root = request.url_root.rstrip("/")
+    body = f"User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: {root}/sitemap.xml\n"
+    return Response(body, mimetype="text/plain")
+
+
+@public_bp.get("/sitemap.xml")
+def sitemap():
+    """Todas las páginas públicas en ES y EN, cada una con sus alternativas de idioma (hreflang)."""
+    root = request.url_root.rstrip("/")
+    entries = []
+    for paths in content.PAGES.values():
+        for lang in content.LANGS:
+            alternates = "".join(
+                f'<xhtml:link rel="alternate" hreflang="{alt}" href="{root}{paths[alt]}"/>' for alt in content.LANGS
+            )
+            alternates += f'<xhtml:link rel="alternate" hreflang="x-default" href="{root}{paths["es"]}"/>'
+            entries.append(f"<url><loc>{root}{paths[lang]}</loc>{alternates}</url>")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        + "\n".join(entries)
+        + "\n</urlset>\n"
+    )
+    return Response(body, mimetype="application/xml")
 
 
 VIEWS = {

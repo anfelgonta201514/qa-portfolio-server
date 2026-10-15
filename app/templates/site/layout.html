@@ -10,6 +10,27 @@
   <link rel="alternate" hreflang="{{ alt_lang }}" href="{{ request.url_root.rstrip('/') }}{{ path }}">
   {% endfor %}
   <link rel="alternate" hreflang="x-default" href="{{ request.url_root.rstrip('/') }}{{ alternates.es }}">
+  {# Vista previa al compartir (LinkedIn, etc.) y URL canónica (QAP-22). Todas las URLs son absolutas y https (ProxyFix en
+     app.py). Imagen provisional: el icono de 512 px (no hay una de 1200x630); por eso la tarjeta de Twitter es "summary". #}
+  {% set site_root = request.url_root.rstrip('/') %}
+  {% set page_url = site_root ~ alternates[lang] %}
+  {% set other_lang = 'en' if lang == 'es' else 'es' %}
+  <link rel="canonical" href="{{ page_url }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ t.html_title }}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ t.meta_description }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:locale" content="{{ 'es_CO' if lang == 'es' else 'en_US' }}">
+  <meta property="og:locale:alternate" content="{{ 'en_US' if lang == 'es' else 'es_CO' }}">
+  <meta property="og:image" content="{{ site_root }}{{ url_for('static', filename='img/icon-512.png') }}">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="{{ t.html_title }}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ self.title() }}">
+  <meta name="twitter:description" content="{{ t.meta_description }}">
+  <meta name="twitter:image" content="{{ site_root }}{{ url_for('static', filename='img/icon-512.png') }}">
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
