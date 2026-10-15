@@ -77,7 +77,7 @@ T = {
         "exp_more": "Ver experiencia completa →",
         "current": "● Actual",
         "current_dates": "Feb 2024 — hoy",
-        "current_text": "Framework Selenium + pytest con POM: regresión automatizada en el 75% de los flujos críticos de reserva y pricing, y ciclo reducido de 1h a 24 min.",
+        "current_text": "Framework Selenium + pytest con POM: regresión automatizada que cubre ~90% de los flujos críticos de reserva y pricing (a la release actual), y ciclo reducido de 1h a 24 min.",
         "proj_label": "Proyectos públicos",
         "proj_title": "Código abierto para revisar cómo trabajo",
         "repo": "Repositorio en GitHub →",
@@ -191,7 +191,7 @@ T = {
         "exp_more": "See full experience →",
         "current": "● Current",
         "current_dates": "Feb 2024 — present",
-        "current_text": "Selenium + pytest framework with POM: automated regression on 75% of critical booking and pricing flows, and the cycle cut from 1h to 24 min.",
+        "current_text": "Selenium + pytest framework with POM: automated regression covering ~90% of critical booking and pricing flows (as of the current release), and the cycle cut from 1h to 24 min.",
         "proj_label": "Public projects",
         "proj_title": "Open source, so you can review how I work",
         "repo": "GitHub repository →",
@@ -269,13 +269,13 @@ KPIS = {
     "es": [
         ("Experiencia", "6+ años", "4+ en automatización"),
         ("Ciclo de regresión", "1h → 24m", "−60% con pytest en paralelo"),
-        ("Flujos críticos cubiertos", "75%", "+60% de regresión automatizada"),
+        ("Flujos críticos cubiertos", "~90%", "a la release actual (era ~60%)"),
         ("Defectos en producción", "−15%", "regresión en cada pull request"),
     ],
     "en": [
         ("Experience", "6+ years", "4+ in test automation"),
         ("Regression cycle", "1h → 24m", "−60% with parallel pytest"),
-        ("Critical flows covered", "75%", "+60% automated regression"),
+        ("Critical flows covered", "~90%", "as of the current release (was ~60%)"),
         ("Production defects", "−15%", "regression on every pull request"),
     ],
 }
@@ -299,7 +299,7 @@ JOBS = {
             "current": True, "dates": "Feb 2024 — hoy", "place": "Remoto · Travel / airline tech",
             "role": "Quality Engineer II | QA Automation Engineer", "company": "FLYR Labs",
             "points": [
-                "Diseñé un framework escalable de Selenium + pytest con Page Object Model que subió la cobertura de regresión automatizada un 60%, hasta el 75% de los flujos críticos de reserva y pricing.",
+                "Diseñé un framework escalable de Selenium + pytest con Page Object Model que llevó la cobertura de regresión automatizada del ~60% al 75% de los flujos críticos de reserva y pricing; hoy ronda el 90% (hasta la release actual: varía si el producto crece más rápido que la automatización).",
                 "Reduje el ciclo de regresión un 60% (de 1h a 24 min) parametrizando y paralelizando las suites de pytest, acelerando la cadencia de releases.",
                 "Bajé un 15% la fuga de defectos a producción integrando las suites a pipelines de GitHub Actions que corren la regresión en cada pull request.",
                 "Automaticé validaciones de API para transacciones de recarga de puntos y vouchers, verificando status codes y schemas de respuesta contra las reglas de negocio.",
@@ -343,7 +343,7 @@ JOBS = {
             "current": True, "dates": "Feb 2024 — present", "place": "Remote · Travel / airline tech",
             "role": "Quality Engineer II | QA Automation Engineer", "company": "FLYR Labs",
             "points": [
-                "Increased automated regression coverage by 60%, reaching 75% of critical booking/pricing flows, by architecting a scalable Selenium + pytest framework with the Page Object Model.",
+                "Architected a scalable Selenium + pytest framework with the Page Object Model that took automated regression coverage from ~60% to 75% of critical booking/pricing flows; it now sits around 90% (as of the current release, and it varies if the product grows faster than the automation).",
                 "Cut regression cycle time by 60% (from 1h to 24 min) by parametrizing and parallelizing pytest suites, accelerating release cadence.",
                 "Reduced production defect leakage by 15% by integrating automated suites into CI/CD pipelines (GitHub Actions) that trigger regression on every pull request.",
                 "Automated API validations for point-reload and voucher transactions, verifying status codes and response schemas against business rules.",
