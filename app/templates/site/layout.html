@@ -42,11 +42,14 @@
 </head>
 <body>
 <div class="shell">
+  {# El último valor de cada entrada marca la etiqueta «pronto». Hoy ninguna la lleva: «Este sitio» ya existe (bloque
+     #arquitectura de la portada). Una prueba vigila que no vuelva a aparecer sin motivo. (Este comentario va FUERA de
+     la etiqueta {% set %}: Jinja no admite comentarios dentro de ella.) #}
   {% set nav = [
     ("overview", t.nav_overview, "overview", urls.overview, False),
     ("experience", t.nav_experience, "experience", urls.experience, False),
     ("case_ui", t.nav_projects, "projects", urls.case_ui, False),
-    ("site", t.nav_site, "site", urls.overview ~ "#arquitectura", True),
+    ("site", t.nav_site, "site", urls.overview ~ "#arquitectura", False),
     ("demos", t.nav_demos, "demos", urls.demos, False),
   ] %}
   <aside class="sidebar">
